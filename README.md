@@ -7,7 +7,18 @@ A plugin for Flywheel development tools.
 To install this plugin in Claude Code:
 
 ```bash
-claude plugin add github:gmedali/flywheel-plugin
+# 1. Add this repository as a plugin marketplace
+claude plugin marketplace add github:gmedali/flywheel-plugin
+
+# 2. Install the plugin
+claude plugin install flywheel-plugin
+```
+
+> **Note**: This requires the repository to be public or for you to have authenticated your GitHub account with Claude Code.
+
+**Alternative (Local Development):**
+```bash
+claude plugin add ./flywheel-plugin
 ```
 
 ## Publishing

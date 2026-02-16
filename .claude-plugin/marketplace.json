@@ -1,0 +1,10 @@
+{
+    "name": "Flywheel Plugin Marketplace",
+    "description": "Marketplace for the Flywheel Plugin.",
+    "plugins": [
+        {
+            "name": "flywheel-plugin",
+            "source": "."
+        }
+    ]
+}
