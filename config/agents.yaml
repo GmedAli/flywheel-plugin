@@ -1,0 +1,14 @@
+agents:
+  - name: "codex"
+    description: "Expert in code generation, refactoring, and debugging."
+    provider: "openai"
+    command: "codex"
+    model: "gpt-5.3-codex"
+    reasoning_effort: "xhigh"
+    personality: "pragmatic"
+    capabilities:
+      - "python"
+      - "bash"
+      - "refactoring"
+      - "debugging"
+    context_window: 128000
