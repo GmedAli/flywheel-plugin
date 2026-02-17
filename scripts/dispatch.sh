@@ -168,18 +168,10 @@ echo ""
 
 execute_codex() {
     local sandbox="${FLYWHEEL_CODEX_SANDBOX:-workspace-write}"
-    local extra_flags=()
-    
-    # Enable extended thinking by default (works with o-series models like o1, o3)
-    # Set FLYWHEEL_SHOW_THINKING=false to disable
-    if [[ "${FLYWHEEL_SHOW_THINKING:-true}" == "true" ]]; then
-        extra_flags+=(--enable extended_thinking)
-    fi
     
     timeout "$TIMEOUT" codex exec \
         --model "$MODEL" \
         --sandbox "$sandbox" \
-        "${extra_flags[@]}" \
         "$FULL_PROMPT" 2>&1
 }
 
