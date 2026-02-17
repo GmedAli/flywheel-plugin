@@ -8,10 +8,10 @@ To install this plugin in Claude Code:
 
 ```bash
 # 1. Add this repository as a plugin marketplace
-claude plugin marketplace add github:gmedali/flywheel-plugin
+claude plugin marketplace add gmedali/flywheel-plugin
 
 # 2. Install the plugin
-claude plugin install flywheel-plugin
+claude plugin install fw
 ```
 
 > **Note**: This requires the repository to be public or for you to have authenticated your GitHub account with Claude Code.
@@ -38,10 +38,10 @@ The workflow will:
 
 ## commands
 
-### /hello
+### /fw:hello
 
 Run the hello command to see a friendly greeting.
 
 ```
-/hello
+/fw:hello
 ```

@@ -7,7 +7,7 @@
     },
     "plugins": [
         {
-            "name": "flywheel-plugin",
+            "name": "fw",
             "source": "./"
         }
     ]

@@ -1,5 +1,5 @@
 {
-  "name": "flywheel-plugin",
+  "name": "fw",
   "version": "0.0.3",
   "description": "A plugin for Flywheel development tools."
 }
