@@ -1,6 +1,10 @@
 {
-    "name": "Flywheel Plugin Marketplace",
+    "name": "flywheel-plugin-marketplace",
     "description": "Marketplace for the Flywheel Plugin.",
+    "owner": {
+        "name": "gmedali",
+        "url": "https://github.com/GmedAli"
+    },
     "plugins": [
         {
             "name": "flywheel-plugin",
