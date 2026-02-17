@@ -175,7 +175,7 @@ agents:
 
 - `FLYWHEEL_TIMEOUT` — Max agent execution time (default: 300s)
 - `FLYWHEEL_CODEX_SANDBOX` — Default sandbox mode for Codex
-- `FLYWHEEL_SHOW_THINKING` — Show Codex thinking process for o-series models (default: false)
+- `FLYWHEEL_SHOW_THINKING` — Show Codex thinking process for o-series models (default: true)
 
 ---
 

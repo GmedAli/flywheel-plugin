@@ -170,8 +170,9 @@ execute_codex() {
     local sandbox="${FLYWHEEL_CODEX_SANDBOX:-workspace-write}"
     local extra_flags=()
     
-    # Enable extended thinking if requested (works with o-series models like o1, o3)
-    if [[ "${FLYWHEEL_SHOW_THINKING:-false}" == "true" ]]; then
+    # Enable extended thinking by default (works with o-series models like o1, o3)
+    # Set FLYWHEEL_SHOW_THINKING=false to disable
+    if [[ "${FLYWHEEL_SHOW_THINKING:-true}" == "true" ]]; then
         extra_flags+=(--enable extended_thinking)
     fi
     
@@ -217,7 +218,7 @@ esac
 THINKING_CONTENT=""
 FINAL_OUTPUT="$OUTPUT"
 
-if [[ "$PROVIDER" == "codex" ]] && [[ "${FLYWHEEL_SHOW_THINKING:-false}" == "true" ]]; then
+if [[ "$PROVIDER" == "codex" ]] && [[ "${FLYWHEEL_SHOW_THINKING:-true}" == "true" ]]; then
     # Try to extract thinking tags if present
     if echo "$OUTPUT" | grep -q "<thinking>"; then
         THINKING_CONTENT=$(echo "$OUTPUT" | sed -n '/<thinking>/,/<\/thinking>/p' | sed '1d;$d')
@@ -232,7 +233,7 @@ fi
     echo "> **Model:** ${MODEL}"
     echo "> **Timestamp:** $(date -u +%Y-%m-%dT%H:%M:%SZ)"
     echo "> **Exit Code:** ${EXIT_CODE}"
-    if [[ "${FLYWHEEL_SHOW_THINKING:-false}" == "true" ]]; then
+    if [[ "${FLYWHEEL_SHOW_THINKING:-true}" == "true" ]]; then
         echo "> **Thinking:** Enabled"
     fi
     echo ""

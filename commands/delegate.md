@@ -67,17 +67,19 @@ After getting the sub-agent's output:
 - If the provider is not available: Show what providers ARE available and suggest `/fw:setup`
 - If the agent times out: Report the timeout and offer to retry with a simpler prompt
 
-## Advanced: Viewing Thinking Process
+## Thinking Process (Enabled by Default)
 
-For Codex with reasoning models (o1, o3), you can enable the thinking process display:
-
-**To enable thinking output:**
-1. Set the environment variable: `export FLYWHEEL_SHOW_THINKING=true`
-2. Run delegate as normal: `/fw:delegate using codex <task>`
+For Codex with reasoning models (o1, o3), the thinking process is **automatically displayed** by default.
 
 **What you'll see:**
-- The model's full reasoning process in a collapsible section
-- Clearer separation between thinking and final output
+- 🧠 **Thinking Process** — The model's full reasoning in a collapsible section
+- 💡 **Final Output** — Clearer separation from the thinking
 - Better insight into how the model approached the problem
 
-**Note:** This works best with o-series models (o1, o3) that have native reasoning capabilities. For other models, the output will be the same as without the flag.
+**To disable thinking output:**
+If you prefer not to see the thinking process, set:
+```bash
+export FLYWHEEL_SHOW_THINKING=false
+```
+
+**Note:** This works best with o-series models (o1, o3) that have native reasoning capabilities. For other models, the output will be the same regardless of this setting.
