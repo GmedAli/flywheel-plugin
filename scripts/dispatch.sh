@@ -168,9 +168,17 @@ echo ""
 
 execute_codex() {
     local sandbox="${FLYWHEEL_CODEX_SANDBOX:-workspace-write}"
+    local extra_flags=()
+    
+    # Enable extended thinking if requested (works with o-series models like o1, o3)
+    if [[ "${FLYWHEEL_SHOW_THINKING:-false}" == "true" ]]; then
+        extra_flags+=(--enable extended_thinking)
+    fi
+    
     timeout "$TIMEOUT" codex exec \
         --model "$MODEL" \
         --sandbox "$sandbox" \
+        "${extra_flags[@]}" \
         "$FULL_PROMPT" 2>&1
 }
 
@@ -204,6 +212,19 @@ esac
 
 # ─── Save Results ────────────────────────────────────────────────────────────
 
+# Parse output for thinking (if present)
+# Codex with extended_thinking typically outputs <thinking>...</thinking> tags
+THINKING_CONTENT=""
+FINAL_OUTPUT="$OUTPUT"
+
+if [[ "$PROVIDER" == "codex" ]] && [[ "${FLYWHEEL_SHOW_THINKING:-false}" == "true" ]]; then
+    # Try to extract thinking tags if present
+    if echo "$OUTPUT" | grep -q "<thinking>"; then
+        THINKING_CONTENT=$(echo "$OUTPUT" | sed -n '/<thinking>/,/<\/thinking>/p' | sed '1d;$d')
+        FINAL_OUTPUT=$(echo "$OUTPUT" | sed '/<thinking>/,/<\/thinking>/d')
+    fi
+fi
+
 {
     echo "# ${INDICATOR} ${PROVIDER^} Output"
     echo ""
@@ -211,10 +232,33 @@ esac
     echo "> **Model:** ${MODEL}"
     echo "> **Timestamp:** $(date -u +%Y-%m-%dT%H:%M:%SZ)"
     echo "> **Exit Code:** ${EXIT_CODE}"
+    if [[ "${FLYWHEEL_SHOW_THINKING:-false}" == "true" ]]; then
+        echo "> **Thinking:** Enabled"
+    fi
     echo ""
     echo "---"
     echo ""
-    echo "$OUTPUT"
+    
+    # Display thinking process if available
+    if [[ -n "$THINKING_CONTENT" ]]; then
+        echo "## 🧠 Thinking Process"
+        echo ""
+        echo "<details>"
+        echo "<summary>Click to expand reasoning</summary>"
+        echo ""
+        echo '```'
+        echo "$THINKING_CONTENT"
+        echo '```'
+        echo ""
+        echo "</details>"
+        echo ""
+        echo "---"
+        echo ""
+        echo "## 💡 Final Output"
+        echo ""
+    fi
+    
+    echo "$FINAL_OUTPUT"
 } > "$RESULT_FILE"
 
 # Also create a "latest" symlink for easy access

@@ -66,3 +66,18 @@ After getting the sub-agent's output:
 - If `dispatch.sh` is missing: Error "Dispatcher script not found."
 - If the provider is not available: Show what providers ARE available and suggest `/fw:setup`
 - If the agent times out: Report the timeout and offer to retry with a simpler prompt
+
+## Advanced: Viewing Thinking Process
+
+For Codex with reasoning models (o1, o3), you can enable the thinking process display:
+
+**To enable thinking output:**
+1. Set the environment variable: `export FLYWHEEL_SHOW_THINKING=true`
+2. Run delegate as normal: `/fw:delegate using codex <task>`
+
+**What you'll see:**
+- The model's full reasoning process in a collapsible section
+- Clearer separation between thinking and final output
+- Better insight into how the model approached the problem
+
+**Note:** This works best with o-series models (o1, o3) that have native reasoning capabilities. For other models, the output will be the same as without the flag.
