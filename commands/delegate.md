@@ -39,15 +39,21 @@ If the user only typed `/fw:delegate` with no arguments:
 
 ## Step 4: Dispatch to Sub-Agent
 
+> **CRITICAL**: You MUST use `dispatch.sh` to spawn agents. DO NOT call `codex`, `claude`, or `gemini` CLIs directly.
+
 1. **Show dispatch banner**:
    ```
    ⚡ Delegating to <PROVIDER>...
    ```
 
-2. **Run the dispatcher**:
+2. **Run the dispatcher** (this is the ONLY way to spawn agents):
    ```bash
    "${CLAUDE_PLUGIN_ROOT}/scripts/dispatch.sh" "<PROVIDER>" "<TASK>" <CONTEXT_FILES>
    ```
+   
+   **Examples:**
+   - `"${CLAUDE_PLUGIN_ROOT}/scripts/dispatch.sh" "codex" "implement a login form"`
+   - `"${CLAUDE_PLUGIN_ROOT}/scripts/dispatch.sh" "claude" "review this code" src/auth.ts`
 
 3. **Read the result file** after dispatch completes:
    ```bash

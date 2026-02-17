@@ -226,8 +226,11 @@ if [[ "$PROVIDER" == "codex" ]] && [[ "${FLYWHEEL_SHOW_THINKING:-true}" == "true
     fi
 fi
 
+# Convert provider to uppercase (portable)
+PROVIDER_UPPER=$(echo "$PROVIDER" | tr '[:lower:]' '[:upper:]')
+
 {
-    echo "# ${INDICATOR} ${PROVIDER^} Output"
+    echo "# ${INDICATOR} ${PROVIDER_UPPER} Output"
     echo ""
     echo "> **Task:** ${RAW_PROMPT}"
     echo "> **Model:** ${MODEL}"
@@ -268,16 +271,16 @@ ln -sf "$RESULT_FILE" "$RESULTS_DIR/latest-${PROVIDER}.md"
 # ─── Output ──────────────────────────────────────────────────────────────────
 
 if [[ $EXIT_CODE -eq 0 ]]; then
-    echo -e "${GREEN}${INDICATOR} ${PROVIDER^} completed successfully${NC}"
+    echo -e "${GREEN}${INDICATOR} ${PROVIDER_UPPER} completed successfully${NC}"
     echo -e "${DIM}Result saved: ${RESULT_FILE}${NC}"
     echo ""
     echo "$OUTPUT"
 elif [[ $EXIT_CODE -eq 124 ]]; then
-    echo -e "${RED}${INDICATOR} ${PROVIDER^} timed out after ${TIMEOUT}s${NC}" >&2
+    echo -e "${RED}${INDICATOR} ${PROVIDER_UPPER} timed out after ${TIMEOUT}s${NC}" >&2
     echo -e "${DIM}Partial output saved: ${RESULT_FILE}${NC}" >&2
     exit 124
 else
-    echo -e "${RED}${INDICATOR} ${PROVIDER^} failed (exit code: ${EXIT_CODE})${NC}" >&2
+    echo -e "${RED}${INDICATOR} ${PROVIDER_UPPER} failed (exit code: ${EXIT_CODE})${NC}" >&2
     echo -e "${DIM}Error output saved: ${RESULT_FILE}${NC}" >&2
     echo ""
     echo "$OUTPUT"
