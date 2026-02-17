@@ -23,7 +23,7 @@ This command allows Claude to delegate complex tasks to specialized sub-agents d
 1.  **Execute Dispatcher**:
     *   Run the dispatch script with the agent and prompt:
         ```bash
-        ./scripts/dispatch.sh "<AGENT>" "<TASK>"
+        "${CLAUDE_PLUGIN_ROOT}/scripts/dispatch.sh" "<AGENT>" "<TASK>"
         ```
     *   **Note**: The dispatch script handles the connection to the specific provider (e.g., Codex CLI).
 

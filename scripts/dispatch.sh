@@ -1,8 +1,9 @@
 #!/bin/bash
 
 # Configuration
-CONFIG_FILE=".flywheel/config.json"
-AGENTS_FILE="config/agents.yaml"
+# Configuration
+CONFIG_FILE="$HOME/.flywheel/config.json"
+AGENTS_FILE="$HOME/.flywheel/agents.yaml"
 
 # Colors
 RED='\033[0;31m'

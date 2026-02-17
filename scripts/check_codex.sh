@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Configuration
-CONFIG_DIR=".flywheel"
+CONFIG_DIR="$HOME/.flywheel"
 CONFIG_FILE="$CONFIG_DIR/config.json"
 mkdir -p "$CONFIG_DIR"
 
