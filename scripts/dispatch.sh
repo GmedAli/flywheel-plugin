@@ -11,11 +11,29 @@ GREEN='\033[0;32m'
 NC='\033[0m'
 
 AGENT_NAME=$1
-PROMPT=$2
+RAW_PROMPT=$2
+shift 2
+CONTEXT_FILES=("$@")
 
-if [ -z "$AGENT_NAME" ] || [ -z "$PROMPT" ]; then
-    echo -e "${RED}Usage: $0 <agent_name> <prompt>${NC}"
+if [ -z "$AGENT_NAME" ] || [ -z "$RAW_PROMPT" ]; then
+    echo -e "${RED}Usage: $0 <agent_name> <prompt> [context_files...]${NC}"
     exit 1
+fi
+
+# Construct Full Prompt with Context
+FULL_PROMPT="$RAW_PROMPT"
+
+if [ ${#CONTEXT_FILES[@]} -gt 0 ]; then
+    FULL_PROMPT+=$'\n\n=== CONTEXT FILES ===\n'
+    for file in "${CONTEXT_FILES[@]}"; do
+        if [ -f "$file" ]; then
+            FULL_PROMPT+="--- File: $file ---\n"
+            FULL_PROMPT+="$(cat "$file")\n"
+            FULL_PROMPT+="--- End of $file ---\n\n"
+        else
+            echo -e "${RED}Warning: Context file '$file' not found, skipping.${NC}" >&2
+        fi
+    done
 fi
 
 # 1. Validate Environment
@@ -40,11 +58,14 @@ if [ "$AGENT_NAME" == "codex" ]; then
     [ -z "$MODEL" ] && MODEL="gpt-5.3-codex"
     
     echo -e "${GREEN}🤖 Delegating to Codex ($MODEL)...${NC}"
-    echo "Prompt: $PROMPT"
+    echo "Prompt: $RAW_PROMPT"
+    if [ ${#CONTEXT_FILES[@]} -gt 0 ]; then
+        echo -e "${GREEN}Attached ${#CONTEXT_FILES[@]} context files.${NC}"
+    fi
     echo "---"
     
     # Execute with explicit model
-    codex exec --model "$MODEL" "$PROMPT"
+    codex exec --model "$MODEL" "$FULL_PROMPT"
 else
     echo -e "${RED}Error: Provider logic for '$AGENT_NAME' not implemented yet.${NC}"
     exit 1
