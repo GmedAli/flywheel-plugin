@@ -1,14 +1,45 @@
 agents:
+  # ─── Code Generation & Implementation ──────────────────────
   - name: "codex"
     description: "Expert in code generation, refactoring, and debugging."
-    provider: "openai"
-    command: "codex"
+    provider: "codex"
     model: "gpt-5.3-codex"
-    reasoning_effort: "xhigh"
-    personality: "pragmatic"
+    sandbox: "workspace-write"
     capabilities:
-      - "python"
-      - "bash"
+      - "code-generation"
       - "refactoring"
       - "debugging"
-    context_window: 128000
+      - "implementation"
+
+  # ─── Analysis & Planning ───────────────────────────────────
+  - name: "claude-sub"
+    description: "Analysis, planning, review, and writing tasks."
+    provider: "claude"
+    model: "sonnet"
+    capabilities:
+      - "analysis"
+      - "planning"
+      - "review"
+      - "writing"
+      - "architecture"
+
+  # ─── Fast Review ───────────────────────────────────────────
+  - name: "reviewer"
+    description: "Fast code review and security analysis."
+    provider: "codex"
+    model: "gpt-5.3-codex-spark"
+    sandbox: "workspace-write"
+    capabilities:
+      - "code-review"
+      - "security-audit"
+      - "quick-feedback"
+
+  # ─── Research & Exploration ────────────────────────────────
+  - name: "gemini"
+    description: "Broad research, ecosystem analysis, and alternatives."
+    provider: "gemini"
+    model: "gemini-3-pro-preview"
+    capabilities:
+      - "research"
+      - "ecosystem-analysis"
+      - "alternatives"

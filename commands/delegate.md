@@ -1,54 +1,68 @@
 ---
-description: Delegate a task to a specialized agent
+description: Delegate a task to a sub-agent (Codex, Claude, Gemini)
 ---
 
-# Agent Orchestration Wizard
+# Delegate Task to Sub-Agent
 
-This command provides an interactive interface for delegating tasks to specialized sub-agents.
+This command delegates a task to a specialized sub-agent. Claude (you) acts as the orchestrator: you spawn the agent, collect its output, review it, and present the result.
 
-## Step 1: Initialization & Agent Selection
+## Step 1: Parse the User's Request
 
-1.  **Display Banner**:
-    ```text
-    🐙 FLYWHEEL ORCHESTRATOR
-    ========================
-    ```
+Parse the user's input for:
+- **Agent specification**: Look for "using codex", "using claude", "using gemini" in the prompt
+- **Task description**: Everything else is the task
 
-2.  **Determine Agent**:
-    *   **If argument provided**: Use `$1` as agent name.
-    *   **If NO argument**:
-        *   Extract available agents from `~/.flywheel/agents.yaml`.
-        *   Ask user: "Which agent would you like to assign this task to?"
-        *   (For now, we can hardcode the options if parsing yaml is hard in markdown, or just prompt for name)
-        *   *Option*: "codex (Code Expert)"
+**Examples:**
+- `/fw:delegate using codex implement a login form` → provider=codex, task="implement a login form"
+- `/fw:delegate review this file for bugs` → provider=auto-detect, task="review this file for bugs"
 
-3.  **Determine Task**:
-    *   **If argument provided**: Use `$2` as task description.
-    *   **If NO argument**:
-        *   Ask user: "What is the task description?"
-        *   (User inputs prompt)
+## Step 2: Auto-Detect Provider (if not specified)
 
-## Step 2: Context Selection
+If the user didn't specify a provider, choose based on the task type:
 
-1.  **Ask for Context**:
-    *   Ask user: "Would you like to include any files for context? (Enter space-separated paths, or press Enter to skip)"
-    *   **User Input**: `files...`
+| Task Pattern | Best Provider | Why |
+|-------------|---------------|-----|
+| implement, build, write code, refactor | `codex` | Code generation strength |
+| review, analyze, plan, explain | `claude` | Analysis and reasoning |
+| research, compare, explore | `gemini` | Broad knowledge, long context |
 
-## Step 3: Execution
+**Fallback**: If unsure, check which providers are available:
+```bash
+"${CLAUDE_PLUGIN_ROOT}/scripts/detect-providers.sh"
+```
+Use the first available provider in order: codex → claude → gemini.
 
-1.  **Prepare Dispatch**:
-    *   Show status: "⚡ Dispatching to [AGENT]..."
+## Step 3: Ask for Task Description (if missing)
 
-2.  **Run Dispatcher**:
-    *   Execute the script with all gathered arguments:
-        ```bash
-        "${CLAUDE_PLUGIN_ROOT}/scripts/dispatch.sh" "<AGENT>" "<TASK>" <CONTEXT_FILES>
-        ```
+If the user only typed `/fw:delegate` with no arguments:
+- Ask: "What task would you like to delegate? You can optionally specify a provider (e.g., 'using codex implement feature X')"
 
-3.  **Display Output**:
-    *   Stream the output from the dispatch script.
+## Step 4: Dispatch to Sub-Agent
+
+1. **Show dispatch banner**:
+   ```
+   ⚡ Delegating to <PROVIDER>...
+   ```
+
+2. **Run the dispatcher**:
+   ```bash
+   "${CLAUDE_PLUGIN_ROOT}/scripts/dispatch.sh" "<PROVIDER>" "<TASK>" <CONTEXT_FILES>
+   ```
+
+3. **Read the result file** after dispatch completes:
+   ```bash
+   cat ~/.flywheel/results/latest-<PROVIDER>.md
+   ```
+
+## Step 5: Review & Present
+
+After getting the sub-agent's output:
+1. **Review** the output for correctness and completeness
+2. **Present** the result to the user with the provider indicator (🔴/🔵/🟡)
+3. **Offer follow-up**: "Would you like me to refine this, delegate to another agent, or apply these changes?"
 
 ## Error Handling
 
-*   If `dispatch.sh` is missing: Error "Dispatcher script not found."
-*   If `agents.yaml` is missing: Error "Configuration not found. Run /fw:setup."
+- If `dispatch.sh` is missing: Error "Dispatcher script not found."
+- If the provider is not available: Show what providers ARE available and suggest `/fw:setup`
+- If the agent times out: Report the timeout and offer to retry with a simpler prompt

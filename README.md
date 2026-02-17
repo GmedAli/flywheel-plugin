@@ -1,107 +1,304 @@
-# Flywheel Plugin
+# Flywheel Plugin for Claude Code
 
-A plugin for Flywheel development tools.
+> **Multi-provider AI delegation plugin** — Let Claude orchestrate specialized agents (Codex, Gemini) for better results
 
-## Installation
+[![Version](https://img.shields.io/badge/version-0.0.3-blue.svg)](https://github.com/yourusername/flywheel-plugin)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-To install this plugin in Claude Code:
+---
+
+## What is Flywheel?
+
+Flywheel transforms Claude into an **orchestrator** that can spawn specialized AI agents for different tasks. Instead of Claude doing everything alone, it delegates specific work to expert agents and synthesizes their outputs.
+
+**Think of it as:** Claude is the project manager, sub-agents are the specialists.
+
+```mermaid
+flowchart LR
+    You["👤 You"] -->|"/fw:delegate implement login"| Claude["🔵 Claude<br/>Orchestrator"]
+    Claude -->|spawns| Codex["🔴 Codex<br/>Code Expert"]
+    Codex -->|returns code| Claude
+    Claude -->|synthesized<br/>result| You
+    
+    style Claude fill:#4A90E2,stroke:#2E5C8A,stroke-width:3px,color:#fff
+    style Codex fill:#E24A4A,stroke:#8A2E2E,stroke-width:2px,color:#fff
+```
+
+---
+
+## ✨ Features
+
+- 🎯 **Multi-Provider Support** — Codex, Claude sub-agents, Gemini
+- 🧠 **Smart Auto-Routing** — Claude picks the best agent for each task
+- 💾 **Result Capture** — All outputs saved to `~/.flywheel/results/`
+- ⚡ **Fast Provider Detection** — Cached checks, 1hr TTL
+- 🎨 **Visual Indicators** — See which provider is running (🔴/🔵/🟡)
+- 🔒 **Sandbox Control** — Configurable safety levels for Codex
+- 🛠️ **Extensible** — Define custom agents in YAML
+
+---
+
+## 🚀 Quick Start
+
+### Installation
 
 ```bash
-# 1. Add this repository as a plugin marketplace
-claude plugin marketplace add gmedali/flywheel-plugin
+# Clone the repository
+git clone https://github.com/yourusername/flywheel-plugin.git
 
-# 2. Install the plugin
-claude plugin install fw
+# Install as a Claude Code plugin
+cp -r flywheel-plugin ~/.claude-code/plugins/fw
 ```
 
-> **Note**: This requires the repository to be public or for you to have authenticated your GitHub account with Claude Code.
+### Setup
 
-**Alternative (Local Development):**
+Inside Claude Code, run:
+```
+/fw:setup
+```
+
+This will:
+- Detect available providers (Codex, Claude, Gemini)
+- Create configuration directory (`~/.flywheel/`)
+- Copy default agent configs
+
+### Your First Delegation
+
+```
+/fw:delegate using codex implement a React login form
+```
+
+Claude will:
+1. Spawn a Codex agent
+2. Codex generates the code
+3. Claude reviews and presents the result
+
+---
+
+## 📚 Commands
+
+### `/fw:setup`
+Detect and configure AI providers.
+
+**Example output:**
+```
+🔍 Flywheel Provider Detection
+─────────────────────────────────
+  🔴 Codex CLI:  ✓ Available (auth: oauth, model: gpt-5.3-codex)
+  🔵 Claude CLI: ✓ Available (v2.1.44)
+  🟡 Gemini CLI: ✓ Available (auth: possible-oauth)
+─────────────────────────────────
+  3 providers ready
+```
+
+### `/fw:delegate [using <provider>] <task>`
+Delegate any task to a sub-agent.
+
+**Auto-detection examples:**
+- `/fw:delegate implement a user authentication system` → 🔴 Codex (code generation)
+- `/fw:delegate explain how JWT works` → 🔵 Claude (analysis)
+- `/fw:delegate research OAuth alternatives` → 🟡 Gemini (research)
+
+**Explicit provider:**
+- `/fw:delegate using codex refactor this function`
+- `/fw:delegate using gemini compare React vs Vue`
+
+### `/fw:review`
+Multi-agent code review with comparison and synthesis.
+
+**Coming in Phase 2** — will spawn multiple agents to review code from different perspectives.
+
+---
+
+## 🎯 Use Cases
+
+### 1. Code Implementation
+**You**: `/fw:delegate using codex build a pagination component`
+
+**What happens:**
+- Codex generates the component
+- Claude reviews the code quality
+- Presents the final result with suggestions
+
+### 2. Analysis & Planning
+**You**: `/fw:delegate analyze the security of this authentication flow`
+
+**What happens:**
+- Claude auto-selects Claude sub-agent (best for analysis)
+- Sub-agent performs deep analysis
+- Claude synthesizes findings
+
+### 3. Research
+**You**: `/fw:delegate research GraphQL vs REST for our API`
+
+**What happens:**
+- Claude auto-selects Gemini (best for research)
+- Gemini explores the topic
+- Claude summarizes pros/cons
+
+### 4. Multi-Perspective Review (Phase 2)
+**You**: `/fw:review review my staged changes`
+
+**What happens:**
+- Spawns Codex for code quality review
+- Spawns Claude sub-agent for architecture review
+- Compares both outputs
+- Presents unified summary
+
+---
+
+## 🛠️ Configuration
+
+### Agent Configuration
+
+Edit `~/.flywheel/agents.yaml` to customize agents:
+
+```yaml
+agents:
+  - name: "codex"
+    provider: "codex"
+    model: "gpt-5.3-codex"
+    sandbox: "workspace-write"  # or "read-only", "danger-full-access"
+    capabilities:
+      - "code-generation"
+      - "refactoring"
+      
+  - name: "claude-sub"
+    provider: "claude"
+    model: "sonnet"  # or "opus", "haiku"
+    capabilities:
+      - "analysis"
+      - "review"
+```
+
+### Environment Variables
+
+- `FLYWHEEL_TIMEOUT` — Max agent execution time (default: 300s)
+- `FLYWHEEL_CODEX_SANDBOX` — Default sandbox mode for Codex
+
+---
+
+## 📖 Provider Setup
+
+### Codex (Recommended for Code)
+
 ```bash
-claude plugin add ./flywheel-plugin
+# Install
+npm install -g @openai/codex
+
+# Authenticate
+codex login
+
+# Or use API key
+export OPENAI_API_KEY="sk-..."
 ```
 
-## Publishing
+### Claude (Built-in)
 
-To publish a new version of this plugin:
+Claude CLI comes with Claude Code — nothing to install!
 
-1.  Go to the **Actions** tab in the GitHub repository.
-2.  Select the **Release** workflow from the left sidebar.
-3.  Click **Run workflow**.
-4.  Select the version bump level (`patch`, `minor`, or `major`) and click **Run workflow**.
-
-The workflow will:
-1.  Bump the version in `plugin.json`.
-2.  Commit and push the change.
-3.  Create and push a new tag.
-4.  Create a GitHub Release with auto-generated notes.
-
-## commands
-
-### /fw:hello
-
-Run the hello command to see a friendly greeting.
-
-```
-/fw:hello
-```
-
-### /fw:review
-
-Review Pull Requests with configurable depth and output options.
-
-```
-/fw:review
-```
-
-#### Features
-
-- **Interactive Configuration**: The command will ask you for:
-  - Review level (low, medium, or critical)
-  - Output format (local file, draft review, or direct submission)
-  - Whether to include proposed solutions
-  - Which PR to review
-
-- **Three Review Levels**:
-  - **Low**: Superficial review focusing on code style, obvious errors, and simple code smells. Fast (~30 seconds).
-  - **Medium**: Context-aware review focusing on breaking changes, missing features, and API contracts. Analyzes immediate context (~1-2 minutes).
-  - **Critical**: In-depth comprehensive review checking design patterns, architecture, best practices, security, performance, and test coverage (~3-5 minutes).
-
-- **Multiple Output Options**:
-  - **Local**: Save review as a markdown file in your current directory
-  - **Draft**: Submit as a draft review on GitHub (you can review before publishing)
-  - **Direct**: Submit the review directly to GitHub
-
-- **Proposed Solutions**: Optionally include code suggestions and fixes for identified issues
-
-#### Prerequisites
-
-- GitHub CLI (`gh`) must be installed and authenticated
-- Must be run from within a git repository
-- Requires read/write permissions on the target repository (for submitting reviews)
-
-#### Usage Example
+### Gemini (For Research)
 
 ```bash
-# Navigate to your repository
-cd /path/to/your/repo
+# Install
+npm install -g @google/gemini-cli
 
-# Run the review command
-/fw:review
-
-# Follow the interactive prompts:
-# 1. Select review level: low/medium/critical
-# 2. Select output format: local/draft/direct
-# 3. Include solutions: yes/no
-# 4. Enter PR number or leave blank to see list
+# Set API key
+export GEMINI_API_KEY="..."
 ```
 
-#### Review Output Structure
+---
 
-The review will be structured with:
-- Summary of the PR and overall assessment
-- Issues categorized by severity (Critical 🔴, Important 🟡, Minor 🟢)
-- Detailed review by file with line-specific feedback
-- Positive observations
-- Recommendations for improvement
-- Review decision (approve/request changes/comment)
+## 🏗️ Architecture
+
+For detailed architecture documentation, see:
+- [**ARCHITECTURE.md**](./docs/ARCHITECTURE.md) — How everything works
+- [**GETTING_STARTED.md**](./docs/GETTING_STARTED.md) — Step-by-step guide
+
+**High-level flow:**
+
+```mermaid
+sequenceDiagram
+    participant U as You
+    participant C as Claude (Orchestrator)
+    participant D as dispatch.sh
+    participant Agent as Sub-Agent (Codex/Gemini)
+    participant R as Results Folder
+    
+    U->>C: /fw:delegate implement login
+    C->>C: Parse task, detect best provider
+    C->>D: dispatch.sh codex "implement login"
+    D->>Agent: codex exec --model gpt-5.3-codex "..."
+    Agent->>D: Returns code
+    D->>R: Save to ~/.flywheel/results/
+    D->>C: Output + exit code
+    C->>C: Review output
+    C->>U: Present synthesized result
+```
+
+---
+
+## 📁 File Structure
+
+```
+flywheel-plugin/
+├── commands/
+│   ├── delegate.md      # Delegation command logic
+│   ├── review.md        # Code review command
+│   └── setup.md         # Provider setup
+├── scripts/
+│   ├── dispatch.sh      # Multi-provider executor
+│   ├── detect-providers.sh  # Provider detection
+│   └── check_codex.sh   # Legacy Codex check
+├── config/
+│   └── agents.yaml      # Agent definitions
+└── docs/
+    ├── ARCHITECTURE.md  # Detailed architecture
+    └── GETTING_STARTED.md  # Setup guide
+```
+
+---
+
+## 🔄 Roadmap
+
+### ✅ Phase 1 (Complete)
+- Multi-provider dispatch (Codex, Claude, Gemini)
+- Smart provider detection with caching
+- Output capture and storage
+- Auto-routing by task type
+
+### 🚧 Phase 2 (In Progress)
+- Multi-agent code review
+- Enhanced `/fw:implement` with validation
+- `/fw:debug` with specialized debugging agents
+
+### 🔮 Phase 3 (Planned)
+- Composable workflows (define multi-step delegations in markdown)
+- Result synthesis across multiple agents
+- Custom workflow templates
+
+---
+
+## 🤝 Contributing
+
+Contributions welcome! Please read our [contributing guidelines](CONTRIBUTING.md) first.
+
+---
+
+## 📄 License
+
+MIT License - see [LICENSE](LICENSE) file for details.
+
+---
+
+## 🙏 Acknowledgments
+
+Inspired by [claude-octopus](https://github.com/nyldn/claude-octopus) multi-provider orchestration patterns.
+
+---
+
+## 📞 Support
+
+- **Issues**: [GitHub Issues](https://github.com/yourusername/flywheel-plugin/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/yourusername/flywheel-plugin/discussions)
+- **Documentation**: [docs/](./docs/)

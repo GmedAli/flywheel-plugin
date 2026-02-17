@@ -53,3 +53,6 @@ results/
 
 # Local cloned reference repositories
 external_repos/
+
+# Generated documentation (local dev only)
+docs/

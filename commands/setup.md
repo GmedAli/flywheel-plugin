@@ -1,10 +1,10 @@
 ---
-description: Ssetup and validate Codex integration
+description: Setup and validate provider integrations
 ---
 
 # Flywheel Setup
 
-This command validates the Codex integration and configures the plugin for use.
+This command validates all AI provider integrations and configures the plugin for use.
 
 ## Step 1: Bootstrap Configuration
 
@@ -18,31 +18,25 @@ This command validates the Codex integration and configures the plugin for use.
             ```bash
             cp "${CLAUDE_PLUGIN_ROOT}/config/agents.yaml" ~/.flywheel/agents.yaml
             ```
-        *   **Message**: "Initialized default agent configuration in `~/.flywheel/agents.yaml`."
+        *   **Message**: "Initialized default agent configuration."
 
-## Step 2: Run Validation Script
+## Step 2: Detect Providers
 
-1.  **Execute the Script**:
-    *   Run the validation script located in the plugin directory:
-        ```bash
-        "${CLAUDE_PLUGIN_ROOT}/scripts/check_codex.sh"
-        ```
-    *   **Capture Output**: The script will output "✅ ..." or "❌ ..." messages.
+1.  **Run provider detection** (force fresh check, ignore cache):
+    ```bash
+    "${CLAUDE_PLUGIN_ROOT}/scripts/detect-providers.sh" --force
+    ```
 
-2.  **Display Results**:
-    *   Present the output directly to the user.
+2.  **Display Results**: Present the detection output to the user.
 
-3.  **Check Status**:
-    *   **If Exit Code 0 (Success)**:
-        *   Configuration has been saved to `~/.flywheel/config.json`.
-        *   **Message**: "Setup complete! You can now use Codex features."
-
-    *   **If Exit Code 1 (Failure)**:
-        *   **Message**: "Setup failed. Please check the errors above."
-        *   **Action**: Provide guidance based on the error (install CLI or set API key).
+3.  **Guidance based on results**:
+    *   **No providers**: Suggest installing Codex CLI (`npm install -g @openai/codex`) or setting `OPENAI_API_KEY`
+    *   **Codex not authenticated**: Suggest `codex login` for OAuth or setting `OPENAI_API_KEY`
+    *   **All good**: "Setup complete! You can now use `/fw:delegate` to dispatch tasks."
 
 ## Step 3: Verify Configuration
 
-1.  **Check Config File**:
-    *   Run `cat ~/.flywheel/config.json` to verify the settings were saved correctly.
-    *   Display the contents if successful.
+1.  Check that `~/.flywheel/agents.yaml` has at least one agent matching an available provider.
+2.  Display available commands:
+    *   `/fw:delegate` — Delegate tasks to sub-agents
+    *   `/fw:review` — Code review with sub-agent analysis
