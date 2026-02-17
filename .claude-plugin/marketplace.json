@@ -8,7 +8,7 @@
     "plugins": [
         {
             "name": "flywheel-plugin",
-            "source": "."
+            "source": "./"
         }
     ]
 }
