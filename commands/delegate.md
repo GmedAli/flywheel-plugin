@@ -41,12 +41,7 @@ If the user only typed `/fw:delegate` with no arguments:
 
 > **CRITICAL**: You MUST use `dispatch.sh` to spawn agents. DO NOT call `codex`, `claude`, or `gemini` CLIs directly.
 
-1. **Show dispatch banner**:
-   ```
-   ⚡ Delegating to <PROVIDER>...
-   ```
-
-2. **Run the dispatcher** (this is the ONLY way to spawn agents):
+1. **Run the dispatcher** (this is the ONLY way to spawn agents):
    ```bash
    "${CLAUDE_PLUGIN_ROOT}/scripts/dispatch.sh" "<PROVIDER>" "<TASK>" <CONTEXT_FILES>
    ```
@@ -54,6 +49,20 @@ If the user only typed `/fw:delegate` with no arguments:
    **Examples:**
    - `"${CLAUDE_PLUGIN_ROOT}/scripts/dispatch.sh" "codex" "implement a login form"`
    - `"${CLAUDE_PLUGIN_ROOT}/scripts/dispatch.sh" "claude" "review this code" src/auth.ts`
+
+2. **What the user will see** — `dispatch.sh` automatically shows a rich banner and live progress:
+   ```
+   ╔══════════════════════════════════════════════════════════╗
+   ║  🔴 Delegating to CODEX                                  ║
+   ╠══════════════════════════════════════════════════════════╣
+   ║  Model   : gpt-5.3-codex                                 ║
+   ║  Task    : implement a login form with validation...     ║
+   ║  Started : 2026-02-18 21:16:03                           ║
+   ╚══════════════════════════════════════════════════════════╝
+
+     ◐  Running... [00:01:23]  Ctrl+C to cancel
+   ```
+   The spinner updates every second with elapsed time. **No fixed timeout** — the agent runs until it finishes naturally (up to `FLYWHEEL_MAX_TIMEOUT`, default 30 min).
 
 3. **Read the result file** after dispatch completes:
    ```bash
@@ -71,7 +80,11 @@ After getting the sub-agent's output:
 
 - If `dispatch.sh` is missing: Error "Dispatcher script not found."
 - If the provider is not available: Show what providers ARE available and suggest `/fw:setup`
-- If the agent times out: Report the timeout and offer to retry with a simpler prompt
+- If the agent exceeds `FLYWHEEL_MAX_TIMEOUT` (default 1800s / 30 min): Report the timeout and suggest increasing it:
+  ```bash
+  export FLYWHEEL_MAX_TIMEOUT=3600  # allow up to 1 hour
+  ```
+  Then offer to retry with a simpler prompt or a different provider.
 
 ## Thinking Process (Enabled by Default)
 

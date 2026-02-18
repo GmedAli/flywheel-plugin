@@ -17,13 +17,17 @@ PLUGIN_DIR="$(dirname "$SCRIPT_DIR")"
 FLYWHEEL_DIR="$HOME/.flywheel"
 AGENTS_FILE="$FLYWHEEL_DIR/agents.yaml"
 RESULTS_DIR="$FLYWHEEL_DIR/results"
-TIMEOUT="${FLYWHEEL_TIMEOUT:-300}"
+
+# Max timeout: how long we'll wait before force-killing (default 30 min)
+# Accepts FLYWHEEL_MAX_TIMEOUT (new) or FLYWHEEL_TIMEOUT (legacy fallback)
+MAX_TIMEOUT="${FLYWHEEL_MAX_TIMEOUT:-${FLYWHEEL_TIMEOUT:-1800}}"
 
 # Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
+CYAN='\033[0;36m'
 DIM='\033[2m'
 BOLD='\033[1m'
 NC='\033[0m'
@@ -54,6 +58,17 @@ mkdir -p "$RESULTS_DIR"
 
 TIMESTAMP=$(date +%Y%m%d-%H%M%S)
 RESULT_FILE="$RESULTS_DIR/${TIMESTAMP}-${PROVIDER}.md"
+TMP_OUTPUT=$(mktemp /tmp/flywheel-output-XXXXXX)
+
+# Cleanup on exit (removes temp file, kills background agent if still running)
+AGENT_PID=""
+cleanup() {
+    if [[ -n "$AGENT_PID" ]] && kill -0 "$AGENT_PID" 2>/dev/null; then
+        kill -- -"$AGENT_PID" 2>/dev/null || kill "$AGENT_PID" 2>/dev/null || true
+    fi
+    rm -f "$TMP_OUTPUT"
+}
+trap cleanup EXIT INT TERM
 
 # ─── Construct Prompt with Context ────────────────────────────────────────────
 
@@ -122,7 +137,6 @@ get_model() {
 
     # Try to read from agents.yaml if it exists
     if [[ -f "$AGENTS_FILE" ]]; then
-        # Find the agent block matching this provider and extract model
         model=$(awk -v prov="$provider" '
             /^  - name:/ { name="" }
             /provider:.*"'$provider'"/ || /provider: '$provider'/ { found=1 }
@@ -156,70 +170,150 @@ provider_indicator() {
 }
 
 INDICATOR=$(provider_indicator "$PROVIDER")
+PROVIDER_UPPER=$(echo "$PROVIDER" | tr '[:lower:]' '[:upper:]')
+START_TIME=$(date +%s)
+START_DISPLAY=$(date "+%Y-%m-%d %H:%M:%S")
+
+# ─── Waiting Banner ───────────────────────────────────────────────────────────
+
+# Truncate task for display (max 55 chars)
+TASK_PREVIEW="${RAW_PROMPT:0:55}"
+if [[ ${#RAW_PROMPT} -gt 55 ]]; then
+    TASK_PREVIEW="${TASK_PREVIEW}..."
+fi
+
+print_banner() {
+    local width=58
+    local border_top="╔$(printf '═%.0s' $(seq 1 $width))╗"
+    local border_bot="╚$(printf '═%.0s' $(seq 1 $width))╝"
+    local sep="╠$(printf '═%.0s' $(seq 1 $width))╣"
+
+    echo -e "${BOLD}${CYAN}${border_top}${NC}"
+    printf "${BOLD}${CYAN}║${NC}  ${INDICATOR} ${BOLD}Delegating to %-41s${CYAN}${BOLD}║${NC}\n" "${PROVIDER_UPPER}"
+    echo -e "${BOLD}${CYAN}${sep}${NC}"
+    printf "${BOLD}${CYAN}║${NC}  ${DIM}%-56s${NC}${BOLD}${CYAN}║${NC}\n" "Model   : ${MODEL}"
+    printf "${BOLD}${CYAN}║${NC}  ${DIM}%-56s${NC}${BOLD}${CYAN}║${NC}\n" "Task    : ${TASK_PREVIEW}"
+    printf "${BOLD}${CYAN}║${NC}  ${DIM}%-56s${NC}${BOLD}${CYAN}║${NC}\n" "Started : ${START_DISPLAY}"
+    if [[ ${#CONTEXT_FILES[@]} -gt 0 ]]; then
+        printf "${BOLD}${CYAN}║${NC}  ${DIM}%-56s${NC}${BOLD}${CYAN}║${NC}\n" "Context : ${#CONTEXT_FILES[@]} file(s) attached"
+    fi
+    echo -e "${BOLD}${CYAN}${border_bot}${NC}"
+    echo ""
+}
+
+# ─── Live Spinner ─────────────────────────────────────────────────────────────
+
+SPINNER_FRAMES=("◐" "◓" "◑" "◒")
+
+format_elapsed() {
+    local secs=$1
+    printf "%02d:%02d:%02d" $((secs/3600)) $(( (secs%3600)/60 )) $((secs%60))
+}
+
+wait_for_agent() {
+    local pid=$1
+    local frame=0
+    local elapsed=0
+
+    while kill -0 "$pid" 2>/dev/null; do
+        elapsed=$(( $(date +%s) - START_TIME ))
+
+        # Hard ceiling: kill if we exceed max timeout
+        if [[ $elapsed -ge $MAX_TIMEOUT ]]; then
+            kill -- -"$pid" 2>/dev/null || kill "$pid" 2>/dev/null || true
+            echo ""
+            echo -e "${RED}✗ ${PROVIDER_UPPER} exceeded max timeout of ${MAX_TIMEOUT}s.${NC}" >&2
+            echo -e "${DIM}  Increase limit: export FLYWHEEL_MAX_TIMEOUT=<seconds>${NC}" >&2
+            return 124
+        fi
+
+        local spinner="${SPINNER_FRAMES[$((frame % 4))]}"
+        local time_str
+        time_str=$(format_elapsed "$elapsed")
+
+        # Overwrite the current line
+        printf "\r  ${YELLOW}${spinner}${NC}  ${DIM}Running... [${time_str}]  Ctrl+C to cancel${NC}   " >&2
+        frame=$((frame + 1))
+        sleep 1
+    done
+
+    # Clear the spinner line
+    printf "\r%-60s\r" "" >&2
+    return 0
+}
 
 # ─── Execute ─────────────────────────────────────────────────────────────────
 
-echo -e "${BOLD}${INDICATOR} Dispatching to ${PROVIDER}${NC} ${DIM}(model: ${MODEL})${NC}"
-echo -e "${DIM}Task: ${RAW_PROMPT:0:100}...${NC}"
-if [[ ${#CONTEXT_FILES[@]} -gt 0 ]]; then
-    echo -e "${DIM}Context: ${#CONTEXT_FILES[@]} file(s) attached${NC}"
-fi
-echo ""
-
 execute_codex() {
     local sandbox="${FLYWHEEL_CODEX_SANDBOX:-workspace-write}"
-    
-    timeout "$TIMEOUT" codex exec \
+    codex exec \
         --model "$MODEL" \
         --sandbox "$sandbox" \
-        "$FULL_PROMPT" 2>&1
+        "$FULL_PROMPT" >"$TMP_OUTPUT" 2>&1
 }
 
 execute_claude() {
-    timeout "$TIMEOUT" claude --print \
+    claude --print \
         -m "$MODEL" \
-        -p "$FULL_PROMPT" 2>&1
+        -p "$FULL_PROMPT" >"$TMP_OUTPUT" 2>&1
 }
 
 execute_gemini() {
-    timeout "$TIMEOUT" env NODE_NO_WARNINGS=1 gemini \
+    env NODE_NO_WARNINGS=1 gemini \
         -o text \
         --approval-mode yolo \
         -m "$MODEL" \
-        -p "" <<< "$FULL_PROMPT" 2>&1
+        -p "" <<<"$FULL_PROMPT" >"$TMP_OUTPUT" 2>&1
 }
 
-# Run the provider and capture output
+# Print the banner
+print_banner
+
+# Launch provider in background (new process group so we can kill cleanly)
 EXIT_CODE=0
 case "$PROVIDER" in
     codex)
-        OUTPUT=$(execute_codex) || EXIT_CODE=$?
+        set -m  # enable job control / process groups
+        execute_codex &
+        AGENT_PID=$!
         ;;
     claude)
-        OUTPUT=$(execute_claude) || EXIT_CODE=$?
+        set -m
+        execute_claude &
+        AGENT_PID=$!
         ;;
     gemini)
-        OUTPUT=$(execute_gemini) || EXIT_CODE=$?
+        set -m
+        execute_gemini &
+        AGENT_PID=$!
         ;;
 esac
 
+# Wait with live spinner
+wait_for_agent "$AGENT_PID" || EXIT_CODE=$?
+
+# Collect exit code from background process (if it finished naturally)
+if [[ $EXIT_CODE -eq 0 ]]; then
+    wait "$AGENT_PID" 2>/dev/null || EXIT_CODE=$?
+fi
+
+OUTPUT=$(cat "$TMP_OUTPUT" 2>/dev/null || true)
+
 # ─── Save Results ────────────────────────────────────────────────────────────
 
+ELAPSED_TOTAL=$(( $(date +%s) - START_TIME ))
+ELAPSED_DISPLAY=$(format_elapsed "$ELAPSED_TOTAL")
+
 # Parse output for thinking (if present)
-# Codex with extended_thinking typically outputs <thinking>...</thinking> tags
 THINKING_CONTENT=""
 FINAL_OUTPUT="$OUTPUT"
 
 if [[ "$PROVIDER" == "codex" ]] && [[ "${FLYWHEEL_SHOW_THINKING:-true}" == "true" ]]; then
-    # Try to extract thinking tags if present
     if echo "$OUTPUT" | grep -q "<thinking>"; then
         THINKING_CONTENT=$(echo "$OUTPUT" | sed -n '/<thinking>/,/<\/thinking>/p' | sed '1d;$d')
         FINAL_OUTPUT=$(echo "$OUTPUT" | sed '/<thinking>/,/<\/thinking>/d')
     fi
 fi
-
-# Convert provider to uppercase (portable)
-PROVIDER_UPPER=$(echo "$PROVIDER" | tr '[:lower:]' '[:upper:]')
 
 {
     echo "# ${INDICATOR} ${PROVIDER_UPPER} Output"
@@ -227,6 +321,7 @@ PROVIDER_UPPER=$(echo "$PROVIDER" | tr '[:lower:]' '[:upper:]')
     echo "> **Task:** ${RAW_PROMPT}"
     echo "> **Model:** ${MODEL}"
     echo "> **Timestamp:** $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    echo "> **Duration:** ${ELAPSED_DISPLAY}"
     echo "> **Exit Code:** ${EXIT_CODE}"
     if [[ "${FLYWHEEL_SHOW_THINKING:-true}" == "true" ]]; then
         echo "> **Thinking:** Enabled"
@@ -234,7 +329,7 @@ PROVIDER_UPPER=$(echo "$PROVIDER" | tr '[:lower:]' '[:upper:]')
     echo ""
     echo "---"
     echo ""
-    
+
     # Display thinking process if available
     if [[ -n "$THINKING_CONTENT" ]]; then
         echo "## 🧠 Thinking Process"
@@ -253,7 +348,7 @@ PROVIDER_UPPER=$(echo "$PROVIDER" | tr '[:lower:]' '[:upper:]')
         echo "## 💡 Final Output"
         echo ""
     fi
-    
+
     echo "$FINAL_OUTPUT"
 } > "$RESULT_FILE"
 
@@ -263,17 +358,18 @@ ln -sf "$RESULT_FILE" "$RESULTS_DIR/latest-${PROVIDER}.md"
 # ─── Output ──────────────────────────────────────────────────────────────────
 
 if [[ $EXIT_CODE -eq 0 ]]; then
-    echo -e "${GREEN}${INDICATOR} ${PROVIDER_UPPER} completed successfully${NC}"
-    echo -e "${DIM}Result saved: ${RESULT_FILE}${NC}"
+    echo -e "${GREEN}✓ ${INDICATOR} ${PROVIDER_UPPER} completed in ${ELAPSED_DISPLAY}${NC}"
+    echo -e "${DIM}  Result saved: ${RESULT_FILE}${NC}"
     echo ""
     echo "$OUTPUT"
 elif [[ $EXIT_CODE -eq 124 ]]; then
-    echo -e "${RED}${INDICATOR} ${PROVIDER_UPPER} timed out after ${TIMEOUT}s${NC}" >&2
-    echo -e "${DIM}Partial output saved: ${RESULT_FILE}${NC}" >&2
+    echo -e "${RED}✗ ${INDICATOR} ${PROVIDER_UPPER} timed out after ${ELAPSED_DISPLAY} (max: ${MAX_TIMEOUT}s)${NC}" >&2
+    echo -e "${DIM}  Partial output saved: ${RESULT_FILE}${NC}" >&2
+    echo -e "${DIM}  Tip: export FLYWHEEL_MAX_TIMEOUT=3600 to allow up to 1 hour${NC}" >&2
     exit 124
 else
-    echo -e "${RED}${INDICATOR} ${PROVIDER_UPPER} failed (exit code: ${EXIT_CODE})${NC}" >&2
-    echo -e "${DIM}Error output saved: ${RESULT_FILE}${NC}" >&2
+    echo -e "${RED}✗ ${INDICATOR} ${PROVIDER_UPPER} failed (exit code: ${EXIT_CODE}) after ${ELAPSED_DISPLAY}${NC}" >&2
+    echo -e "${DIM}  Error output saved: ${RESULT_FILE}${NC}" >&2
     echo ""
     echo "$OUTPUT"
     exit $EXIT_CODE
