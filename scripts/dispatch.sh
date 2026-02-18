@@ -26,7 +26,6 @@ MAX_TIMEOUT="${FLYWHEEL_MAX_TIMEOUT:-${FLYWHEEL_TIMEOUT:-1800}}"
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 DIM='\033[2m'
 BOLD='\033[1m'
@@ -58,17 +57,7 @@ mkdir -p "$RESULTS_DIR"
 
 TIMESTAMP=$(date +%Y%m%d-%H%M%S)
 RESULT_FILE="$RESULTS_DIR/${TIMESTAMP}-${PROVIDER}.md"
-TMP_OUTPUT=$(mktemp /tmp/flywheel-output-XXXXXX)
-
-# Cleanup on exit (removes temp file, kills background agent if still running)
-AGENT_PID=""
-cleanup() {
-    if [[ -n "$AGENT_PID" ]] && kill -0 "$AGENT_PID" 2>/dev/null; then
-        kill -- -"$AGENT_PID" 2>/dev/null || kill "$AGENT_PID" 2>/dev/null || true
-    fi
-    rm -f "$TMP_OUTPUT"
-}
-trap cleanup EXIT INT TERM
+START_TIME=$(date +%s)
 
 # ─── Construct Prompt with Context ────────────────────────────────────────────
 
@@ -78,7 +67,6 @@ if [[ ${#CONTEXT_FILES[@]} -gt 0 ]]; then
     FULL_PROMPT+=$'\n\n=== CONTEXT FILES ===\n'
     for file in "${CONTEXT_FILES[@]}"; do
         if [[ -f "$file" ]]; then
-            # Basic truncation: max 50KB per file
             local_content=$(head -c 51200 "$file")
             FULL_PROMPT+="--- File: $file ---"$'\n'
             FULL_PROMPT+="$local_content"$'\n'
@@ -124,7 +112,6 @@ check_provider() {
     return 0
 }
 
-# Validate provider is available
 if ! check_provider "$PROVIDER"; then
     exit 1
 fi
@@ -135,7 +122,6 @@ get_model() {
     local provider="$1"
     local model=""
 
-    # Try to read from agents.yaml if it exists
     if [[ -f "$AGENTS_FILE" ]]; then
         model=$(awk -v prov="$provider" '
             /^  - name:/ { name="" }
@@ -144,7 +130,6 @@ get_model() {
         ' "$AGENTS_FILE" 2>/dev/null || echo "")
     fi
 
-    # Defaults
     if [[ -z "$model" ]]; then
         case "$provider" in
             codex)  model="gpt-5.3-codex" ;;
@@ -171,12 +156,10 @@ provider_indicator() {
 
 INDICATOR=$(provider_indicator "$PROVIDER")
 PROVIDER_UPPER=$(echo "$PROVIDER" | tr '[:lower:]' '[:upper:]')
-START_TIME=$(date +%s)
 START_DISPLAY=$(date "+%Y-%m-%d %H:%M:%S")
 
-# ─── Waiting Banner ───────────────────────────────────────────────────────────
+# ─── Static Banner ────────────────────────────────────────────────────────────
 
-# Truncate task for display (max 55 chars)
 TASK_PREVIEW="${RAW_PROMPT:0:55}"
 if [[ ${#RAW_PROMPT} -gt 55 ]]; then
     TASK_PREVIEW="${TASK_PREVIEW}..."
@@ -199,112 +182,56 @@ print_banner() {
     fi
     echo -e "${BOLD}${CYAN}${border_bot}${NC}"
     echo ""
-}
-
-# ─── Live Spinner ─────────────────────────────────────────────────────────────
-
-SPINNER_FRAMES=("◐" "◓" "◑" "◒")
-
-format_elapsed() {
-    local secs=$1
-    printf "%02d:%02d:%02d" $((secs/3600)) $(( (secs%3600)/60 )) $((secs%60))
-}
-
-wait_for_agent() {
-    local pid=$1
-    local frame=0
-    local elapsed=0
-
-    while kill -0 "$pid" 2>/dev/null; do
-        elapsed=$(( $(date +%s) - START_TIME ))
-
-        # Hard ceiling: kill if we exceed max timeout
-        if [[ $elapsed -ge $MAX_TIMEOUT ]]; then
-            kill -- -"$pid" 2>/dev/null || kill "$pid" 2>/dev/null || true
-            echo ""
-            echo -e "${RED}✗ ${PROVIDER_UPPER} exceeded max timeout of ${MAX_TIMEOUT}s.${NC}" >&2
-            echo -e "${DIM}  Increase limit: export FLYWHEEL_MAX_TIMEOUT=<seconds>${NC}" >&2
-            return 124
-        fi
-
-        local spinner="${SPINNER_FRAMES[$((frame % 4))]}"
-        local time_str
-        time_str=$(format_elapsed "$elapsed")
-
-        # Overwrite the current line
-        printf "\r  ${YELLOW}${spinner}${NC}  ${DIM}Running... [${time_str}]  Ctrl+C to cancel${NC}   " >&2
-        frame=$((frame + 1))
-        sleep 1
-    done
-
-    # Clear the spinner line
-    printf "\r%-60s\r" "" >&2
-    return 0
+    echo -e "${DIM}⏳ Waiting for ${PROVIDER_UPPER} — this may take several minutes...${NC}"
+    echo ""
 }
 
 # ─── Execute ─────────────────────────────────────────────────────────────────
 
 execute_codex() {
     local sandbox="${FLYWHEEL_CODEX_SANDBOX:-workspace-write}"
-    codex exec \
+    timeout "$MAX_TIMEOUT" codex exec \
         --model "$MODEL" \
         --sandbox "$sandbox" \
-        "$FULL_PROMPT" >"$TMP_OUTPUT" 2>&1
+        "$FULL_PROMPT" 2>&1
 }
 
 execute_claude() {
-    claude --print \
+    timeout "$MAX_TIMEOUT" claude --print \
         -m "$MODEL" \
-        -p "$FULL_PROMPT" >"$TMP_OUTPUT" 2>&1
+        -p "$FULL_PROMPT" 2>&1
 }
 
 execute_gemini() {
-    env NODE_NO_WARNINGS=1 gemini \
+    timeout "$MAX_TIMEOUT" env NODE_NO_WARNINGS=1 gemini \
         -o text \
         --approval-mode yolo \
         -m "$MODEL" \
-        -p "" <<<"$FULL_PROMPT" >"$TMP_OUTPUT" 2>&1
+        -p "" <<<"$FULL_PROMPT" 2>&1
 }
 
-# Print the banner
 print_banner
 
-# Launch provider in background (new process group so we can kill cleanly)
 EXIT_CODE=0
 case "$PROVIDER" in
     codex)
-        set -m  # enable job control / process groups
-        execute_codex &
-        AGENT_PID=$!
+        OUTPUT=$(execute_codex) || EXIT_CODE=$?
         ;;
     claude)
-        set -m
-        execute_claude &
-        AGENT_PID=$!
+        OUTPUT=$(execute_claude) || EXIT_CODE=$?
         ;;
     gemini)
-        set -m
-        execute_gemini &
-        AGENT_PID=$!
+        OUTPUT=$(execute_gemini) || EXIT_CODE=$?
         ;;
 esac
 
-# Wait with live spinner
-wait_for_agent "$AGENT_PID" || EXIT_CODE=$?
+# ─── Duration ────────────────────────────────────────────────────────────────
 
-# Collect exit code from background process (if it finished naturally)
-if [[ $EXIT_CODE -eq 0 ]]; then
-    wait "$AGENT_PID" 2>/dev/null || EXIT_CODE=$?
-fi
-
-OUTPUT=$(cat "$TMP_OUTPUT" 2>/dev/null || true)
+ELAPSED=$(( $(date +%s) - START_TIME ))
+ELAPSED_DISPLAY=$(printf "%02d:%02d:%02d" $((ELAPSED/3600)) $(( (ELAPSED%3600)/60 )) $((ELAPSED%60)))
 
 # ─── Save Results ────────────────────────────────────────────────────────────
 
-ELAPSED_TOTAL=$(( $(date +%s) - START_TIME ))
-ELAPSED_DISPLAY=$(format_elapsed "$ELAPSED_TOTAL")
-
-# Parse output for thinking (if present)
 THINKING_CONTENT=""
 FINAL_OUTPUT="$OUTPUT"
 
@@ -330,7 +257,6 @@ fi
     echo "---"
     echo ""
 
-    # Display thinking process if available
     if [[ -n "$THINKING_CONTENT" ]]; then
         echo "## 🧠 Thinking Process"
         echo ""
@@ -352,7 +278,6 @@ fi
     echo "$FINAL_OUTPUT"
 } > "$RESULT_FILE"
 
-# Also create a "latest" symlink for easy access
 ln -sf "$RESULT_FILE" "$RESULTS_DIR/latest-${PROVIDER}.md"
 
 # ─── Output ──────────────────────────────────────────────────────────────────
