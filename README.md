@@ -140,6 +140,38 @@ Multi-agent PR code review with configurable depth (`low` / `medium` / `critical
 
 ---
 
+### `/fw:debug <issue description>`
+
+**6-phase diagnostic workflow.** Identifies root causes and proposes solutions — **never modifies code.**
+
+```
+/fw:debug TypeError: Cannot read property 'map' of undefined in UserList
+/fw:debug requests are taking 10 seconds before the first API call
+/fw:debug login redirects to a blank page after OAuth callback
+```
+
+**Phases:**
+
+| # | Phase | Agent | What happens |
+|---|-------|-------|-------------|
+| 0 | Parse & Classify | Claude | Detects `low` / `medium` / `critical` severity |
+| 1 | Reproduce & Observe | Claude | Locates failing code, traces data flow, checks git history |
+| 2 | Deep Analysis | Codex | Root-cause analysis with full codebase context |
+| 3 | Cross-Reference | Gemini | Checks for known bugs, documented gotchas |
+| 4 | Diagnosis Report | Claude | Structured report: root cause, failing code, explanation, solution |
+| 5 | **User Gate** | **You** | `accept` / `deeper` / `delegate` fix |
+
+All phase outputs saved to `~/.flywheel/debug/<session>/`.
+
+**Severity behaviour:**
+- `low` (config/lint/warning) — skips Gemini cross-reference for speed
+- `medium` (runtime error/regression) — full workflow
+- `critical` (crash/data loss/security) — full workflow + deeper analysis prompts
+
+**Impact depth** on every proposed solution: `surface` · `local` · `module` · `system`
+
+---
+
 ## 🛠️ Configuration
 
 ### Agent Configuration
@@ -229,6 +261,7 @@ flywheel-plugin/
 │   ├── implement.md     # Full feature workflow (9 phases)
 │   ├── delegate.md      # Single-task delegation
 │   ├── review.md        # PR code review
+│   ├── debug.md         # Diagnostic workflow (6 phases)
 │   └── setup.md         # Provider setup
 ├── scripts/
 │   ├── dispatch.sh      # Multi-provider executor
@@ -248,12 +281,19 @@ flywheel-plugin/
 ├── results/             # dispatch.sh outputs (delegate/review)
 │   ├── latest-codex.md
 │   └── 20260218-*.md
-└── implement/           # /fw:implement sessions
-    └── 20260218-213528/
+├── implement/           # /fw:implement sessions
+│   └── 20260218-213528/
+│       ├── 00-session.md
+│       ├── 01-research-*.md
+│       ├── 04-proposal.md
+│       └── 09-return.md
+└── debug/               # /fw:debug sessions
+    └── 20260219-160158/
         ├── 00-session.md
-        ├── 01-research-*.md
-        ├── 04-proposal.md
-        └── 09-return.md
+        ├── 01-observe.md
+        ├── 02-analysis.md
+        ├── 03-crossref.md
+        └── 04-diagnosis.md
 ```
 
 ---
@@ -272,8 +312,8 @@ flywheel-plugin/
 - Session persistence and resumability
 - Scope-aware workflow depth
 
-### 🔮 Phase 3 (Planned)
-- `/fw:debug` — specialized debugging agents
+### 🚧 Phase 3 (In Progress)
+- `/fw:debug` — ✅ 6-phase diagnostic workflow (read-only, never modifies code)
 - Composable custom workflows in markdown
 - Result synthesis across multiple agents
 
