@@ -172,6 +172,132 @@ All phase outputs saved to `~/.flywheel/debug/<session>/`.
 
 ---
 
+### `/fw:migrate <migration target>`
+
+**6-phase migration workflow.** Handles framework upgrades, dependency bumps, API changes, and language modernization with batch execution and rollback safety.
+
+```
+/fw:migrate React 18 → 19
+/fw:migrate Express to Fastify
+/fw:migrate upgrade all dependencies
+/fw:migrate Jest to Vitest
+```
+
+**Phases:**
+
+| # | Phase | Agent | What happens |
+|---|-------|-------|-------------|
+| 0 | Parse & Scope | Claude | Detects `patch` / `minor` / `major` |
+| 1 | Research | Claude + Gemini | Codebase inventory + breaking changes research |
+| 2 | Manifest | Codex | File-by-file change map, batched by risk |
+| 3 | **User Gate** | **You** | ⛔ Approve all / specific batch / modify / cancel |
+| 4 | Execute | Codex | Applies changes batch-by-batch with validation |
+| 5 | Verify & Report | Claude | Final validation, diff summary, rollback instructions |
+
+All phase outputs saved to `~/.flywheel/migrate/<session>/`.
+
+**Batch strategy:** Safe (🟢) → Moderate (🟡) → Breaking (🔴), with lint/type/build/test checks between each batch.
+
+---
+
+### `/fw:harden [scope]`
+
+**5-phase security audit.** OWASP Top 10 scanning, dependency CVE checks, secrets detection, and auto-generated patches.
+
+```
+/fw:harden                          # full project scan
+/fw:harden src/auth/                # specific module
+/fw:harden #142                     # files changed on PR
+```
+
+**Phases:**
+
+| # | Phase | Agent | What happens |
+|---|-------|-------|-------------|
+| 0 | Parse & Detect | Claude | Scope + stack detection |
+| 1 | Code Scan | Codex | OWASP Top 10 + language-specific vulnerability patterns |
+| 2 | Dependency Audit | Gemini | CVE cross-reference, supply chain risk |
+| 3 | Secrets Scan | Claude | Hardcoded keys, leaked credentials, misconfigurations |
+| 4 | Triage & Patch | Claude + Codex | Prioritise findings, generate fixes, validate |
+
+All phase outputs saved to `~/.flywheel/harden/<session>/`.
+
+**Severity levels:** 🔴 Critical · 🟠 High · 🟡 Medium · 🟢 Low — with OWASP category mapping on every finding.
+
+---
+
+### `/fw:test [mode]`
+
+**5-phase test generation workflow.** Analyses coverage gaps, prioritises by risk, and generates tests matching your existing conventions.
+
+```
+/fw:test                            # branch mode (changes on current branch)
+/fw:test module src/auth/           # specific module
+/fw:test sweep                      # full project scan
+```
+
+**Phases:**
+
+| # | Phase | Agent | What happens |
+|---|-------|-------|-------------|
+| 0 | Parse & Detect | Claude | Mode + test framework detection |
+| 1 | Coverage Analysis | Codex | Maps tested vs untested functions |
+| 2 | Prioritise Gaps | Claude | Ranks by risk: P0 (critical) → P3 (low) |
+| 3 | Generate Tests | Codex | Writes tests matching existing conventions |
+| 4 | Validate & Fix | Codex | Runs tests, fixes failures (max 3 retries) |
+
+All phase outputs saved to `~/.flywheel/test/<session>/`.
+
+**Modes:** `branch` (pre-PR, default) · `module` (specific directory) · `sweep` (full project)
+
+---
+
+### `/fw:tdd <feature description>`
+
+**Test-Driven Development workflow.** Follows the strict Red → Green → Refactor cycle — tests are always written before implementation code.
+
+```
+/fw:tdd a URL shortener that validates input and handles collisions
+/fw:tdd user registration with email validation
+/fw:tdd rate limiter middleware with sliding window
+```
+
+**Phases:**
+
+| # | Phase | Agent | What happens |
+|---|-------|-------|-------------|
+| 0 | Parse & Detect | Claude | Scope (`unit` / `feature` / `module`) + test framework detection |
+| 1 | Design Test Cases | Claude + Codex | Decompose feature into ordered testable behaviours |
+| 2 | Define Interfaces | Codex | Create types, signatures, contracts — zero logic |
+| 3 | TDD Cycles | Codex + Claude | 🔴 Write failing test → 🟢 Minimal code to pass → 🔵 Refactor |
+| 4 | Integration | Codex | Full suite verification + integration tests |
+| 5 | Report | Claude | Cycle traceability, coverage, design decisions |
+
+All phase outputs saved to `~/.flywheel/tdd/<session>/`.
+
+**How it differs from `/fw:test` and `/fw:implement`:**
+- `/fw:implement` — builds code first, tests after (Phase 8)
+- `/fw:test` — generates tests for *existing* untested code
+- `/fw:tdd` — **tests first, code follows** — each behaviour emerges from a failing test
+
+---
+
+### `/fw:cleanup [target]`
+
+**Session cache management.** View storage usage and clear old session data, scoped per project.
+
+```
+/fw:cleanup                    # show storage dashboard
+/fw:cleanup project            # clear all sessions for current project
+/fw:cleanup implement          # clear only implement sessions
+/fw:cleanup older 2w           # clear sessions older than 2 weeks
+/fw:cleanup results            # clear dispatch result files only
+/fw:cleanup all                # clear everything across all projects
+/fw:cleanup migrate-legacy     # move pre-isolation flat sessions into current project
+```
+
+---
+
 ## 🛠️ Configuration
 
 ### Agent Configuration
@@ -193,7 +319,7 @@ agents:
 | `FLYWHEEL_MAX_TIMEOUT` | `1800` | Max agent execution time in seconds (30 min) |
 | `FLYWHEEL_CODEX_SANDBOX` | `workspace-write` | Default sandbox mode for Codex |
 | `FLYWHEEL_SHOW_THINKING` | `true` | Show Codex reasoning for o-series models |
-| `FLYWHEEL_IMPLEMENT_DIR` | `~/.flywheel/implement` | Where implement session files are saved |
+| `FLYWHEEL_PROJECT` | `<git repo name>` | Override auto-detected project name for session isolation |
 
 > **Legacy**: `FLYWHEEL_TIMEOUT` still works as a fallback for `FLYWHEEL_MAX_TIMEOUT`.
 
@@ -262,6 +388,11 @@ flywheel-plugin/
 │   ├── delegate.md      # Single-task delegation
 │   ├── review.md        # PR code review
 │   ├── debug.md         # Diagnostic workflow (6 phases)
+│   ├── migrate.md       # Migration workflow (6 phases)
+│   ├── harden.md        # Security audit (5 phases)
+│   ├── test.md          # Test generation (5 phases)
+│   ├── tdd.md           # Test-driven development (5 phases)
+│   ├── cleanup.md       # Session cache management
 │   └── setup.md         # Provider setup
 ├── scripts/
 │   ├── dispatch.sh      # Multi-provider executor
@@ -275,47 +406,37 @@ flywheel-plugin/
     └── GETTING_STARTED.md
 ```
 
-**Session storage:**
+**Session storage (per-project isolation):**
 ```
 ~/.flywheel/
-├── results/             # dispatch.sh outputs (delegate/review)
-│   ├── latest-codex.md
-│   └── 20260218-*.md
-├── implement/           # /fw:implement sessions
-│   └── 20260218-213528/
-│       ├── 00-session.md
-│       ├── 01-research-*.md
-│       ├── 04-proposal.md
-│       └── 09-return.md
-└── debug/               # /fw:debug sessions
-    └── 20260219-160158/
-        ├── 00-session.md
-        ├── 01-observe.md
-        ├── 02-analysis.md
-        ├── 03-crossref.md
-        └── 04-diagnosis.md
+├── agents.yaml                     # Global agent config
+├── .provider-cache                 # Provider detection cache
+└── projects/                       # All session data lives here
+    ├── flywheel-plugin/            # ← project name (auto-detected from git)
+    │   ├── results/                # dispatch.sh outputs
+    │   │   ├── latest-codex.md
+    │   │   └── 20260218-*.md
+    │   ├── implement/              # /fw:implement sessions
+    │   │   └── 20260218-213528/
+    │   │       ├── 00-session.md
+    │   │       ├── 01-research-*.md
+    │   │       ├── 04-proposal.md
+    │   │       └── 09-return.md
+    │   ├── debug/                  # /fw:debug sessions
+    │   ├── migrate/                # /fw:migrate sessions
+    │   ├── harden/                 # /fw:harden sessions
+    │   ├── test/                   # /fw:test sessions
+    │   └── tdd/                    # /fw:tdd sessions
+    ├── my-web-app/                 # Another project
+    │   ├── results/
+    │   ├── implement/
+    │   └── ...
+    └── api-service/                # And another
+        └── ...
 ```
 
----
+> Project name is auto-detected from `git rev-parse --show-toplevel`. Override with `FLYWHEEL_PROJECT` env var.
 
-## 🔄 Roadmap
-
-### ✅ Phase 1 (Complete)
-- Multi-provider dispatch (Codex, Claude, Gemini)
-- Smart provider detection with caching
-- Output capture and storage
-- Auto-routing by task type
-
-### ✅ Phase 2 (Complete)
-- `/fw:implement` — full 9-phase feature workflow
-- `/fw:review` — multi-agent PR review
-- Session persistence and resumability
-- Scope-aware workflow depth
-
-### 🚧 Phase 3 (In Progress)
-- `/fw:debug` — ✅ 6-phase diagnostic workflow (read-only, never modifies code)
-- Composable custom workflows in markdown
-- Result synthesis across multiple agents
 
 ---
 

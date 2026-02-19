@@ -9,9 +9,17 @@ This command validates all AI provider integrations and configures the plugin fo
 ## Step 1: Bootstrap Configuration
 
 1.  **Create Global Config Directory**:
-    *   Run: `mkdir -p ~/.flywheel`
+    *   Run: `mkdir -p ~/.flywheel/projects`
 
-2.  **Initialize Agents Config**:
+2.  **Create Current Project Directory**:
+    *   Detect project name:
+        ```bash
+        PROJECT_NAME="${FLYWHEEL_PROJECT:-$(basename "$(git rev-parse --show-toplevel 2>/dev/null || echo "$PWD")")}"
+        mkdir -p "$HOME/.flywheel/projects/$PROJECT_NAME/results"
+        ```
+    *   **Message**: "Project directory created: `~/.flywheel/projects/<PROJECT_NAME>/`"
+
+3.  **Initialize Agents Config**:
     *   Check if `~/.flywheel/agents.yaml` exists.
     *   **If NOT exists**:
         *   Copy the default configuration:
@@ -19,6 +27,14 @@ This command validates all AI provider integrations and configures the plugin fo
             cp "${CLAUDE_PLUGIN_ROOT}/config/agents.yaml" ~/.flywheel/agents.yaml
             ```
         *   **Message**: "Initialized default agent configuration."
+
+4.  **Migrate Legacy Sessions** (if any):
+    *   Check if flat session directories exist at `~/.flywheel/` (implement/, debug/, results/, etc.)
+    *   If found, inform the user:
+        ```
+        ⚠️ Legacy session data found at ~/.flywheel/ (pre-project isolation).
+           Run /fw:cleanup migrate-legacy to move it under the current project.
+        ```
 
 ## Step 2: Detect Providers
 
@@ -38,5 +54,12 @@ This command validates all AI provider integrations and configures the plugin fo
 
 1.  Check that `~/.flywheel/agents.yaml` has at least one agent matching an available provider.
 2.  Display available commands:
-    *   `/fw:delegate` — Delegate tasks to sub-agents
-    *   `/fw:review` — Code review with sub-agent analysis
+    *   `/fw:implement` — Full feature workflow (research → plan → build → test)
+    *   `/fw:delegate` — Delegate a single task to a sub-agent
+    *   `/fw:review` — Multi-agent PR code review
+    *   `/fw:debug` — Diagnostic workflow (read-only)
+    *   `/fw:tdd` — Test-driven development (Red → Green → Refactor)
+    *   `/fw:test` — Proactive test generation and coverage analysis
+    *   `/fw:migrate` — Framework/dependency migration with rollback
+    *   `/fw:harden` — Security audit (OWASP, CVEs, secrets)
+    *   `/fw:cleanup` — Manage and clear session caches

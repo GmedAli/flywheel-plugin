@@ -16,7 +16,20 @@ PLUGIN_DIR="$(dirname "$SCRIPT_DIR")"
 # Configuration
 FLYWHEEL_DIR="$HOME/.flywheel"
 AGENTS_FILE="$FLYWHEEL_DIR/agents.yaml"
-RESULTS_DIR="$FLYWHEEL_DIR/results"
+
+# ─── Per-Project Isolation ──────────────────────────────────────────────────
+# Derive project name from git repo or current directory.
+# All session data lives under ~/.flywheel/projects/<project>/
+if [[ -n "${FLYWHEEL_PROJECT:-}" ]]; then
+    PROJECT_NAME="$FLYWHEEL_PROJECT"
+elif git rev-parse --is-inside-work-tree &>/dev/null; then
+    PROJECT_NAME=$(basename "$(git rev-parse --show-toplevel)")
+else
+    PROJECT_NAME=$(basename "$PWD")
+fi
+
+PROJECT_DIR="$FLYWHEEL_DIR/projects/$PROJECT_NAME"
+RESULTS_DIR="$PROJECT_DIR/results"
 
 # Max timeout: how long we'll wait before force-killing (default 30 min)
 # Accepts FLYWHEEL_MAX_TIMEOUT (new) or FLYWHEEL_TIMEOUT (legacy fallback)

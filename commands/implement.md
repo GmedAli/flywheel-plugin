@@ -28,9 +28,10 @@ Show the detected scope:
 📐 Scope detected: MEDIUM — running full workflow
 ```
 
-**Create session directory:**
+**Create session directory (per-project isolation):**
 ```bash
-SESSION_DIR="$HOME/.flywheel/implement/$(date +%Y%m%d-%H%M%S)"
+PROJECT_NAME="${FLYWHEEL_PROJECT:-$(basename "$(git rev-parse --show-toplevel 2>/dev/null || echo "$PWD")")}"
+SESSION_DIR="$HOME/.flywheel/projects/$PROJECT_NAME/implement/$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$SESSION_DIR"
 ```
 
@@ -377,4 +378,5 @@ Save to `$SESSION_DIR/09-return.md`.
 | `FLYWHEEL_MAX_TIMEOUT` | `1800` | Max seconds per agent call (30 min) |
 | `FLYWHEEL_CODEX_SANDBOX` | `workspace-write` | Codex sandbox mode |
 | `FLYWHEEL_SHOW_THINKING` | `true` | Show Codex reasoning output |
-| `FLYWHEEL_IMPLEMENT_DIR` | `~/.flywheel/implement` | Where session files are saved |
+| `FLYWHEEL_PROJECT` | `<git repo name>` | Override project name for session isolation |
+| `FLYWHEEL_IMPLEMENT_DIR` | `~/.flywheel/projects/<project>/implement` | Where session files are saved |

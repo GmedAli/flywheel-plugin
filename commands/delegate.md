@@ -66,7 +66,8 @@ If the user only typed `/fw:delegate` with no arguments:
 
 3. **Read the result file** after dispatch completes:
    ```bash
-   cat ~/.flywheel/results/latest-<PROVIDER>.md
+   PROJECT_NAME="${FLYWHEEL_PROJECT:-$(basename "$(git rev-parse --show-toplevel 2>/dev/null || echo "$PWD")")}"
+   cat "$HOME/.flywheel/projects/$PROJECT_NAME/results/latest-<PROVIDER>.md"
    ```
 
 ## Step 5: Review & Present

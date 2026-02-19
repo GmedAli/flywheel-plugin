@@ -33,9 +33,10 @@ Show the classification:
 🔥 Severity: MEDIUM — running full diagnostic
 ```
 
-**Create session directory:**
+**Create session directory (per-project isolation):**
 ```bash
-SESSION_DIR="$HOME/.flywheel/debug/$(date +%Y%m%d-%H%M%S)"
+PROJECT_NAME="${FLYWHEEL_PROJECT:-$(basename "$(git rev-parse --show-toplevel 2>/dev/null || echo "$PWD")")}"
+SESSION_DIR="$HOME/.flywheel/projects/$PROJECT_NAME/debug/$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$SESSION_DIR"
 ```
 
@@ -274,4 +275,5 @@ Ask the user:
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `FLYWHEEL_MAX_TIMEOUT` | `1800` | Max seconds per agent call (30 min) |
-| `FLYWHEEL_DEBUG_DIR` | `~/.flywheel/debug` | Where debug session files are saved |
+| `FLYWHEEL_PROJECT` | `<git repo name>` | Override project name for session isolation |
+| `FLYWHEEL_DEBUG_DIR` | `~/.flywheel/projects/<project>/debug` | Where debug session files are saved |
