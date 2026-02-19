@@ -29,7 +29,25 @@ flowchart LR
 
 ---
 
-## 🚀 Quick Start
+## 🎭 Personas
+
+Flywheel ships 8 **native Claude Code sub-agents** — persistent specialists that each `/fw:` command activates. They run in isolated context windows with curated tool access and model routing, replacing ad-hoc prompt strings with real behavioural mandates.
+
+| Persona | Model | Used by | Role |
+|---------|-------|---------|------|
+| `fw-architect` | opus | `/fw:design`, `/fw:implement` | Commits to one approach, produces ADRs, file impact maps, risk registers |
+| `fw-researcher` | sonnet | Research phases | Filters external knowledge through your existing stack, rates every option |
+| `fw-debugger` | sonnet | `/fw:debug` | Forensic root-cause analysis — mandatory causal chain, no guesses |
+| `fw-security-auditor` | opus | `/fw:harden` | Offensive OWASP scanner — every finding has attack scenario + patch |
+| `fw-code-reviewer` | sonnet | `/fw:review` | Blocking vs advisory classification — every finding has file:line + fix |
+| `fw-tdd-specialist` | sonnet | `/fw:tdd` | Red→Green→Refactor enforcer — refuses implementation without failing test |
+| `fw-test-generator` | sonnet | `/fw:test` | P0→P3 risk-prioritised coverage — learns your conventions before writing |
+| `fw-migration-engineer` | sonnet | `/fw:migrate` | Batched migrations with mandatory rollback plans and validation gates |
+
+**Installation:** `/fw:setup` runs `scripts/install-personas.sh` to copy all personas to `~/.claude/agents/`. Upgrade anytime:
+```bash
+"${CLAUDE_PLUGIN_ROOT}/scripts/install-personas.sh" --force
+```
 
 ### Installation
 
@@ -109,8 +127,8 @@ This will detect available providers (Codex, Claude, Gemini) and create `~/.flyw
 | # | Phase | Agent | What happens |
 |---|-------|-------|-------------|
 | 0 | Scope detection | Claude | Detects `small` / `medium` / `large` |
-| 1 | Research | Claude + Gemini | Codebase scan + ecosystem research |
-| 2 | Planning | Codex | Technical plan, ADRs, file map |
+| 1 | Research | Claude + `fw-researcher` | Codebase scan + ecosystem research |
+| 2 | Planning | `fw-architect` | Approach comparison, ADRs, file map, risk register |
 | 3 | Questions | Claude | Gap analysis, max 5 critical questions |
 | 4 | Proposal | Claude | Structured spec + acceptance criteria |
 | 5 | **User Gate** | **You** | ⛔ Approve / modify / cancel |
@@ -142,7 +160,7 @@ This will detect available providers (Codex, Claude, Gemini) and create `~/.flyw
 |---|-------|-------|-------------|
 | 0 | Parse & Classify | Claude | Detects `low` / `medium` / `critical` severity |
 | 1 | Reproduce & Observe | Claude | Locates failing code, traces data flow, checks git history |
-| 2 | Deep Analysis | Codex | Root-cause analysis with full codebase context |
+| 2 | Deep Analysis | `fw-debugger` | Causal chain, hypotheses eliminated, minimal fix proposed |
 | 3 | Cross-Reference | Gemini | Checks for known bugs, documented gotchas |
 | 4 | Diagnosis Report | Claude | Root cause, failing code, explanation, proposed solution |
 | 5 | **User Gate** | **You** | `accept` / `deeper` / `delegate` fix |
@@ -390,6 +408,16 @@ sequenceDiagram
 
 ```
 flywheel-plugin/
+├── agents/
+│   └── personas/           # Native Claude Code sub-agents (8 personas)
+│       ├── fw-architect.md         # opus  — design/implement planning
+│       ├── fw-researcher.md        # sonnet — ecosystem research
+│       ├── fw-debugger.md          # sonnet — root-cause analysis
+│       ├── fw-security-auditor.md  # opus  — OWASP security audit
+│       ├── fw-code-reviewer.md     # sonnet — PR code review
+│       ├── fw-tdd-specialist.md    # sonnet — TDD cycles
+│       ├── fw-test-generator.md    # sonnet — coverage generation
+│       └── fw-migration-engineer.md # sonnet — migration planning
 ├── commands/
 │   ├── design.md       # Research-driven design workflow (6 phases)
 │   ├── implement.md    # Full feature workflow (9 phases)
@@ -401,11 +429,12 @@ flywheel-plugin/
 │   ├── test.md         # Test generation (5 phases)
 │   ├── tdd.md          # Test-driven development (6 phases)
 │   ├── cleanup.md      # Session cache management
-│   └── setup.md        # Provider setup
+│   └── setup.md        # Provider setup + persona installation
 ├── scripts/
-│   ├── dispatch.sh         # Multi-provider executor
-│   ├── detect-providers.sh # Provider availability check
-│   └── check_codex.sh     # Codex-specific validation
+│   ├── dispatch.sh             # Multi-provider executor
+│   ├── install-personas.sh     # Copies personas to ~/.claude/agents/
+│   ├── detect-providers.sh     # Provider availability check
+│   └── check_codex.sh          # Codex-specific validation
 ├── config/
 │   └── agents.yaml         # Agent definitions
 └── docs/
