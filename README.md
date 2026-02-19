@@ -29,19 +29,6 @@ flowchart LR
 
 ---
 
-## ✨ Features
-
-- 🎯 **Multi-Provider Support** — Codex, Claude sub-agents, Gemini
-- 🏗️ **Full Feature Workflows** — Research → Plan → Propose → Build → Test in one command
-- 🧠 **Smart Auto-Routing** — Claude picks the best agent for each phase
-- 💾 **Session Persistence** — All phase outputs saved, sessions resumable
-- ⚡ **Scope Detection** — Auto-adjusts workflow depth for small vs large features
-- 🎨 **Visual Indicators** — See which provider is running (🔴/🔵/🟡)
-- 🔒 **Sandbox Control** — Configurable safety levels for Codex
-- 🛠️ **Extensible** — Define custom agents in YAML
-
----
-
 ## 🚀 Quick Start
 
 ### Installation
@@ -62,13 +49,6 @@ Inside Claude Code, run:
 
 This will detect available providers (Codex, Claude, Gemini) and create `~/.flywheel/`.
 
----
-
-## 📚 Commands
-
-### `/fw:setup`
-Detect and configure AI providers.
-
 ```
 🔍 Flywheel Provider Detection
 ─────────────────────────────────
@@ -78,6 +58,39 @@ Detect and configure AI providers.
 ─────────────────────────────────
   3 providers ready
 ```
+
+---
+
+## 📚 Commands
+
+### `/fw:design <description>`
+
+**Research-driven design workflow.** Analyses requirements, scans the codebase, researches best practices, and produces a detailed plan-of-action document (`DESIGN-PLAN.md`) in the project root. **Never modifies code.**
+
+```
+/fw:design add real-time notifications with WebSocket support
+/fw:design migrate our monolith to a modular plugin architecture
+/fw:design implement role-based access control
+```
+
+**Phases:**
+
+| # | Phase | Agent | What happens |
+|---|-------|-------|-------------|
+| 0 | Parse & Classify | Claude | Understands requirements, classifies `light` / `standard` / `deep` |
+| 1 | Codebase Analysis | Claude | Scans relevant files, maps patterns, identifies constraints |
+| 2 | Ecosystem Research | Gemini | Best practices, packages, pitfalls, security considerations |
+| 3 | Deep Analysis | Codex | Evaluates approaches, recommends architecture, identifies risks |
+| 4 | Resolve Questions | Claude | Surfaces blocking decisions for the user (max 5) |
+| 5 | Write Plan | Claude | Produces `DESIGN-PLAN.md` with full task breakdown |
+| 6 | **User Gate** | **You** | `approve` / `refine` / `deeper` / `implement` |
+
+**Output:** A structured plan covering requirements, solution overview, files impacted, ordered task breakdown with validation steps, risks, and a testing strategy.
+
+**Complexity behaviour:**
+- `light` (config/rename/simple addition) — skips ecosystem research + deep analysis
+- `standard` (new feature/integration) — full workflow
+- `deep` (architecture/migration/system redesign) — full workflow + expanded research
 
 ---
 
@@ -98,45 +111,18 @@ Detect and configure AI providers.
 | 0 | Scope detection | Claude | Detects `small` / `medium` / `large` |
 | 1 | Research | Claude + Gemini | Codebase scan + ecosystem research |
 | 2 | Planning | Codex | Technical plan, ADRs, file map |
-| 3 | Questions | Claude | Gap analysis → max 5 critical questions |
+| 3 | Questions | Claude | Gap analysis, max 5 critical questions |
 | 4 | Proposal | Claude | Structured spec + acceptance criteria |
 | 5 | **User Gate** | **You** | ⛔ Approve / modify / cancel |
-| 6 | Iteration | Codex → Claude | Approach review loop (medium/large) |
+| 6 | Iteration | Codex + Claude | Approach review loop (medium/large) |
 | 7 | Implementation | Codex | Writes the code |
 | 8 | Testing | Codex + Claude | TDD-style tests + coverage review |
 | 9 | Return | Claude | Summary, files changed, next steps |
 
-All phase outputs saved to `~/.flywheel/implement/<session>/`.
-
 **Scope behaviour:**
-- `small` (fix/add/tweak) — skips Gemini research + iteration loop for speed
+- `small` (fix/add/tweak) — skips Gemini research + iteration loop
 - `medium` (implement/build) — full workflow
 - `large` (architect/system) — full workflow + deeper research
-
----
-
-### `/fw:delegate [using <provider>] <task>`
-
-Delegate a single task to a sub-agent. Best for one-shot tasks.
-
-```
-/fw:delegate using codex refactor this function
-/fw:delegate research OAuth alternatives
-/fw:delegate explain how JWT works
-```
-
-**Auto-detection:**
-| Task keywords | Provider | Why |
-|--------------|----------|-----|
-| implement, build, refactor | 🔴 Codex | Code generation strength |
-| review, analyze, explain | 🔵 Claude | Reasoning and analysis |
-| research, compare, explore | 🟡 Gemini | Broad knowledge |
-
----
-
-### `/fw:review`
-
-Multi-agent PR code review with configurable depth (`low` / `medium` / `critical`) and output options (`local` / `draft` / `direct` to GitHub).
 
 ---
 
@@ -158,17 +144,41 @@ Multi-agent PR code review with configurable depth (`low` / `medium` / `critical
 | 1 | Reproduce & Observe | Claude | Locates failing code, traces data flow, checks git history |
 | 2 | Deep Analysis | Codex | Root-cause analysis with full codebase context |
 | 3 | Cross-Reference | Gemini | Checks for known bugs, documented gotchas |
-| 4 | Diagnosis Report | Claude | Structured report: root cause, failing code, explanation, solution |
+| 4 | Diagnosis Report | Claude | Root cause, failing code, explanation, proposed solution |
 | 5 | **User Gate** | **You** | `accept` / `deeper` / `delegate` fix |
 
-All phase outputs saved to `~/.flywheel/debug/<session>/`.
-
 **Severity behaviour:**
-- `low` (config/lint/warning) — skips Gemini cross-reference for speed
+- `low` (config/lint/warning) — skips Gemini cross-reference
 - `medium` (runtime error/regression) — full workflow
-- `critical` (crash/data loss/security) — full workflow + deeper analysis prompts
+- `critical` (crash/data loss/security) — full workflow + deeper analysis
 
 **Impact depth** on every proposed solution: `surface` · `local` · `module` · `system`
+
+---
+
+### `/fw:delegate [using <provider>] <task>`
+
+Delegate a single task to a sub-agent. Best for one-shot tasks.
+
+```
+/fw:delegate using codex refactor this function
+/fw:delegate research OAuth alternatives
+/fw:delegate explain how JWT works
+```
+
+**Auto-detection:**
+
+| Task keywords | Provider | Why |
+|--------------|----------|-----|
+| implement, build, refactor | 🔴 Codex | Code generation strength |
+| review, analyze, explain | 🔵 Claude | Reasoning and analysis |
+| research, compare, explore | 🟡 Gemini | Broad knowledge |
+
+---
+
+### `/fw:review`
+
+Multi-agent PR code review with configurable depth (`low` / `medium` / `critical`) and output options (`local` / `draft` / `direct` to GitHub).
 
 ---
 
@@ -179,7 +189,6 @@ All phase outputs saved to `~/.flywheel/debug/<session>/`.
 ```
 /fw:migrate React 18 → 19
 /fw:migrate Express to Fastify
-/fw:migrate upgrade all dependencies
 /fw:migrate Jest to Vitest
 ```
 
@@ -193,8 +202,6 @@ All phase outputs saved to `~/.flywheel/debug/<session>/`.
 | 3 | **User Gate** | **You** | ⛔ Approve all / specific batch / modify / cancel |
 | 4 | Execute | Codex | Applies changes batch-by-batch with validation |
 | 5 | Verify & Report | Claude | Final validation, diff summary, rollback instructions |
-
-All phase outputs saved to `~/.flywheel/migrate/<session>/`.
 
 **Batch strategy:** Safe (🟢) → Moderate (🟡) → Breaking (🔴), with lint/type/build/test checks between each batch.
 
@@ -220,8 +227,6 @@ All phase outputs saved to `~/.flywheel/migrate/<session>/`.
 | 3 | Secrets Scan | Claude | Hardcoded keys, leaked credentials, misconfigurations |
 | 4 | Triage & Patch | Claude + Codex | Prioritise findings, generate fixes, validate |
 
-All phase outputs saved to `~/.flywheel/harden/<session>/`.
-
 **Severity levels:** 🔴 Critical · 🟠 High · 🟡 Medium · 🟢 Low — with OWASP category mapping on every finding.
 
 ---
@@ -245,8 +250,6 @@ All phase outputs saved to `~/.flywheel/harden/<session>/`.
 | 2 | Prioritise Gaps | Claude | Ranks by risk: P0 (critical) → P3 (low) |
 | 3 | Generate Tests | Codex | Writes tests matching existing conventions |
 | 4 | Validate & Fix | Codex | Runs tests, fixes failures (max 3 retries) |
-
-All phase outputs saved to `~/.flywheel/test/<session>/`.
 
 **Modes:** `branch` (pre-PR, default) · `module` (specific directory) · `sweep` (full project)
 
@@ -273,8 +276,6 @@ All phase outputs saved to `~/.flywheel/test/<session>/`.
 | 4 | Integration | Codex | Full suite verification + integration tests |
 | 5 | Report | Claude | Cycle traceability, coverage, design decisions |
 
-All phase outputs saved to `~/.flywheel/tdd/<session>/`.
-
 **How it differs from `/fw:test` and `/fw:implement`:**
 - `/fw:implement` — builds code first, tests after (Phase 8)
 - `/fw:test` — generates tests for *existing* untested code
@@ -295,6 +296,12 @@ All phase outputs saved to `~/.flywheel/tdd/<session>/`.
 /fw:cleanup all                # clear everything across all projects
 /fw:cleanup migrate-legacy     # move pre-isolation flat sessions into current project
 ```
+
+---
+
+### `/fw:setup`
+
+Detect and configure AI providers. Run this once after installation to verify Codex, Claude, and Gemini are available.
 
 ---
 
@@ -384,26 +391,28 @@ sequenceDiagram
 ```
 flywheel-plugin/
 ├── commands/
-│   ├── implement.md     # Full feature workflow (9 phases)
-│   ├── delegate.md      # Single-task delegation
-│   ├── review.md        # PR code review
-│   ├── debug.md         # Diagnostic workflow (6 phases)
-│   ├── migrate.md       # Migration workflow (6 phases)
-│   ├── harden.md        # Security audit (5 phases)
-│   ├── test.md          # Test generation (5 phases)
-│   ├── tdd.md           # Test-driven development (5 phases)
-│   ├── cleanup.md       # Session cache management
-│   └── setup.md         # Provider setup
+│   ├── design.md       # Research-driven design workflow (6 phases)
+│   ├── implement.md    # Full feature workflow (9 phases)
+│   ├── debug.md        # Diagnostic workflow (6 phases)
+│   ├── delegate.md     # Single-task delegation
+│   ├── review.md       # PR code review
+│   ├── migrate.md      # Migration workflow (6 phases)
+│   ├── harden.md       # Security audit (5 phases)
+│   ├── test.md         # Test generation (5 phases)
+│   ├── tdd.md          # Test-driven development (6 phases)
+│   ├── cleanup.md      # Session cache management
+│   └── setup.md        # Provider setup
 ├── scripts/
-│   ├── dispatch.sh      # Multi-provider executor
-│   ├── detect-providers.sh
-│   └── check_codex.sh
+│   ├── dispatch.sh         # Multi-provider executor
+│   ├── detect-providers.sh # Provider availability check
+│   └── check_codex.sh     # Codex-specific validation
 ├── config/
-│   └── agents.yaml
+│   └── agents.yaml         # Agent definitions
 └── docs/
-    ├── ARCHITECTURE.md
-    ├── DELEGATION_FLOW.md
-    └── GETTING_STARTED.md
+    ├── ARCHITECTURE.md     # System architecture guide
+    ├── DELEGATION_FLOW.md  # How dispatch and delegation work
+    ├── GETTING_STARTED.md  # First-time setup walkthrough
+    └── README.md           # Docs index
 ```
 
 **Session storage (per-project isolation):**
@@ -412,46 +421,21 @@ flywheel-plugin/
 ├── agents.yaml                     # Global agent config
 ├── .provider-cache                 # Provider detection cache
 └── projects/                       # All session data lives here
-    ├── flywheel-plugin/            # ← project name (auto-detected from git)
-    │   ├── results/                # dispatch.sh outputs
-    │   │   ├── latest-codex.md
-    │   │   └── 20260218-*.md
-    │   ├── implement/              # /fw:implement sessions
-    │   │   └── 20260218-213528/
-    │   │       ├── 00-session.md
-    │   │       ├── 01-research-*.md
-    │   │       ├── 04-proposal.md
-    │   │       └── 09-return.md
-    │   ├── debug/                  # /fw:debug sessions
-    │   ├── migrate/                # /fw:migrate sessions
-    │   ├── harden/                 # /fw:harden sessions
-    │   ├── test/                   # /fw:test sessions
-    │   └── tdd/                    # /fw:tdd sessions
-    ├── my-web-app/                 # Another project
-    │   ├── results/
-    │   ├── implement/
-    │   └── ...
-    └── api-service/                # And another
-        └── ...
+    └── <project-name>/             # Auto-detected from git repo name
+        ├── results/                # dispatch.sh outputs
+        ├── design/                 # /fw:design sessions
+        ├── implement/              # /fw:implement sessions
+        ├── debug/                  # /fw:debug sessions
+        ├── migrate/                # /fw:migrate sessions
+        ├── harden/                 # /fw:harden sessions
+        ├── test/                   # /fw:test sessions
+        └── tdd/                    # /fw:tdd sessions
 ```
 
 > Project name is auto-detected from `git rev-parse --show-toplevel`. Override with `FLYWHEEL_PROJECT` env var.
-
-
----
-
-## 🤝 Contributing
-
-Contributions welcome! Please read our [contributing guidelines](CONTRIBUTING.md) first.
 
 ---
 
 ## 📄 License
 
 MIT License - see [LICENSE](LICENSE) file for details.
-
----
-
-## 🙏 Acknowledgments
-
-Inspired by [claude-octopus](https://github.com/nyldn/claude-octopus) multi-provider orchestration patterns.
