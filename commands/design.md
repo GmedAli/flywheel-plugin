@@ -4,6 +4,10 @@ description: Research-driven design workflow — analyze requirements, explore t
 
 # Design Workflow
 
+> **Personas active:**
+> - `fw-researcher` — ecosystem research phases (external best practices, library selection, known pitfalls)
+> - `fw-architect` — technical planning phase (ADRs, file impact maps, risk register, approach recommendation)
+
 This command runs a structured 6-phase research and design workflow. It produces a detailed plan-of-action document in the project root. **No code is ever modified — this command is strictly read-only and outputs only a plan.**
 
 ---

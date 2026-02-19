@@ -4,6 +4,10 @@ description: Full feature implementation workflow — research, plan, propose, b
 
 # Implement Feature
 
+> **Personas active:**
+> - `fw-researcher` — Phase 1b ecosystem research (libraries, patterns, security, pitfalls)
+> - `fw-architect` — Phase 2 technical planning (approach comparison, ADRs, file impact map, risk register)
+
 This command runs a structured 9-phase workflow to implement a feature end-to-end. Claude orchestrates specialized agents at each phase. **No code is written until you approve the proposal.**
 
 ---
@@ -60,9 +64,23 @@ You (Claude) scan the current project for:
 
 Summarise findings in `$SESSION_DIR/01-research-codebase.md`.
 
-### 1b — Ecosystem Research (Gemini, medium + large only)
+### 1b — Ecosystem Research (medium + large only)
 
-Run:
+**Primary path — invoke `fw-researcher` persona:**
+```
+Task(fw-researcher): Research best practices, libraries, and patterns for: <FEATURE_DESCRIPTION>.
+
+Include:
+1. Recommended libraries/frameworks — rate each as ✅/⚠️/❌ with maintenance status
+2. Common implementation patterns — with concrete examples
+3. Known pitfalls and edge cases — specific and cited
+4. Security considerations — mandatory, not optional
+5. Performance implications — measurable characteristics
+
+Stack context: <detected from codebase scan>
+```
+
+**Fallback — if fw-researcher not installed, run Gemini via dispatch.sh:**
 ```bash
 "${CLAUDE_PLUGIN_ROOT}/scripts/dispatch.sh" "gemini" "Research best practices, libraries, and patterns for: <FEATURE_DESCRIPTION>. Focus on: (1) recommended libraries/frameworks, (2) common implementation patterns, (3) known pitfalls and edge cases, (4) security considerations, (5) performance implications. Be specific and actionable."
 ```
@@ -75,18 +93,39 @@ Print a brief summary:
 ```
 ✅ Phase 1 Complete — Research
    Codebase: <N> relevant files found, <key patterns noted>
-   Ecosystem: <top 2-3 findings from Gemini>
+   Ecosystem: <top 2-3 findings>
 ```
 
 ---
 
 ## Phase 2: Planning 🏗️
 
-> *Inspired by the `grasp` phase — uses backend-architect persona*
+> *Inspired by the `grasp` phase — uses fw-architect persona*
 
 **Goal:** Produce a technical plan with architecture decisions.
 
-Run Codex with the backend-architect persona:
+**Primary path — invoke `fw-architect` persona:**
+```
+Task(fw-architect): Based on the following context, produce a technical implementation plan.
+
+FEATURE: <FEATURE_DESCRIPTION>
+
+CODEBASE CONTEXT:
+<contents of 01-research-codebase.md>
+
+ECOSYSTEM RESEARCH:
+<contents of 01-research-ecosystem.md, or 'N/A for small scope'>
+
+Produce:
+- Approach analysis table (2-3 options) + recommended choice with rationale
+- Architecture Decision Record (ADR)
+- File impact map (CREATE/MODIFY/DELETE with purpose)
+- Risk register
+- Integration checklist
+- Effort estimate (honest — do not under-estimate)
+```
+
+**Fallback — if fw-architect not installed, run Codex:**
 ```bash
 "${CLAUDE_PLUGIN_ROOT}/scripts/dispatch.sh" "codex" "You are a backend architect. Based on the following context, produce a technical implementation plan.
 

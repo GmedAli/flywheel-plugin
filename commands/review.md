@@ -4,6 +4,8 @@ description: Review PRs with configurable depth and output options
 
 # PR Review Command
 
+> **Persona active:** `fw-code-reviewer` — principal engineer reviewer. Classifies findings as **blocking** (merge stops) vs **advisory** (worth fixing). Every finding includes file:line, exact issue, and concrete change suggestion.
+
 This command will help you review Pull Requests with varying levels of depth and provide feedback through different channels.
 
 ## Step 1: Ask User for Configuration

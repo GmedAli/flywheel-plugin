@@ -4,6 +4,8 @@ description: Security audit and hardening — OWASP scanning, dependency CVE che
 
 # Security Harden Workflow
 
+> **Persona active:** `fw-security-auditor` — offensive-minded OWASP specialist. Thinks like an attacker. Prioritises findings by exploitability × impact. Every finding comes with evidence and a concrete patch.
+
 This command runs a structured 5-phase security audit to identify vulnerabilities, check dependencies for CVEs, detect leaked secrets, and generate hardened patches. Claude orchestrates specialized agents at each phase. **No code is changed until you approve the fixes.**
 
 ---
@@ -57,11 +59,22 @@ Save `$SESSION_DIR/00-session.md` with:
 
 ## Phase 1: Static Analysis — Code Vulnerabilities 🔍
 
-> *Codex scans the code for OWASP Top 10 and language-specific vulnerability patterns*
+> *`fw-security-auditor` persona performs OWASP Top 10 + language-specific vulnerability scan*
 
 **Goal:** Find vulnerabilities in the source code itself — injection, auth flaws, misconfigurations.
 
-Run Codex:
+**Primary path — invoke `fw-security-auditor` persona directly:**
+```
+Task(fw-security-auditor): Perform a full security audit of the following scope. Produce a complete Security Audit Report with findings prioritised by severity. Every finding must include: OWASP category, file:line, evidence, attack scenario, and proposed patch.
+
+SCOPE: <SCOPE_DESCRIPTION>
+STACK: <DETECTED_STACK>
+FILES: <FILES_IN_SCOPE>
+```
+
+Save output to `$SESSION_DIR/01-code-audit.md`.
+
+**Fallback — if fw-security-auditor persona not installed, run Codex:**
 ```bash
 "${CLAUDE_PLUGIN_ROOT}/scripts/dispatch.sh" "codex" "You are a security auditor. Perform a thorough static security analysis of the following codebase.
 

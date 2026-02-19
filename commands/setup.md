@@ -36,7 +36,43 @@ This command validates all AI provider integrations and configures the plugin fo
            Run /fw:cleanup migrate-legacy to move it under the current project.
         ```
 
-## Step 2: Detect Providers
+## Step 2: Install Flywheel Personas
+
+> **Personas are native Claude Code sub-agents.** They give each `/fw:` command a specialist identity with curated tool access, model routing, and clear behavioural mandates — replacing ad-hoc prompt strings with persistent, reusable agents.
+
+1.  **Create the Claude agents directory**:
+    ```bash
+    mkdir -p ~/.claude/agents
+    ```
+
+2.  **Run the persona installer**:
+    ```bash
+    "${CLAUDE_PLUGIN_ROOT}/scripts/install-personas.sh"
+    ```
+    This copies all Flywheel personas from `agents/personas/` to `~/.claude/agents/`, only overwriting files that are older than the installed version.
+
+3.  **Verify installation**:
+    ```bash
+    ls ~/.claude/agents/fw-*.md
+    ```
+    Expected personas:
+    ```
+    fw-architect.md          — /fw:design, /fw:implement (planning phases)
+    fw-researcher.md         — All research phases (external best practices)
+    fw-debugger.md           — /fw:debug (root-cause analysis)
+    fw-security-auditor.md   — /fw:harden (OWASP scanning + CVE audit)
+    fw-code-reviewer.md      — /fw:review (PR code review)
+    fw-tdd-specialist.md     — /fw:tdd (Red → Green → Refactor)
+    fw-test-generator.md     — /fw:test (coverage gap analysis)
+    fw-migration-engineer.md — /fw:migrate (breaking change handling)
+    ```
+
+4.  **If personas need updating** (e.g. after a plugin upgrade):
+    ```bash
+    "${CLAUDE_PLUGIN_ROOT}/scripts/install-personas.sh" --force
+    ```
+
+## Step 3: Detect Providers
 
 1.  **Run provider detection** (force fresh check, ignore cache):
     ```bash
@@ -48,9 +84,9 @@ This command validates all AI provider integrations and configures the plugin fo
 3.  **Guidance based on results**:
     *   **No providers**: Suggest installing Codex CLI (`npm install -g @openai/codex`) or setting `OPENAI_API_KEY`
     *   **Codex not authenticated**: Suggest `codex login` for OAuth or setting `OPENAI_API_KEY`
-    *   **All good**: "Setup complete! You can now use `/fw:delegate` to dispatch tasks."
+    *   **All good**: "Providers ready!"
 
-## Step 3: Verify Configuration
+## Step 4: Verify Configuration
 
 1.  Check that `~/.flywheel/agents.yaml` has at least one agent matching an available provider.
 2.  Display available commands:

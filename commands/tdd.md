@@ -4,6 +4,8 @@ description: Test-Driven Development — write tests first, implement to pass, r
 
 # TDD Workflow
 
+> **Persona active:** `fw-tdd-specialist` — strict Red→Green→Refactor enforcer. Refuses to write implementation before a confirmed failing test. Every cycle produces one failing test, minimal code to pass it, then a clean refactor — no shortcuts.
+
 This command runs a structured Red → Green → Refactor workflow for building features test-first. Claude orchestrates specialized agents through iterative cycles where **tests are always written before implementation code.** No production code exists until a failing test demands it.
 
 ---

@@ -4,6 +4,8 @@ description: Debug workflow — diagnose root cause, explain failing code, propo
 
 # Debug Workflow
 
+> **Persona active:** `fw-debugger` — forensic root-cause analyst. This persona operates read-only, traces causal chains with evidence, and refuses to guess. It is automatically invoked for deep analysis phases.
+
 This command runs a structured 6-phase diagnostic workflow to identify root causes, explain issues, and propose solutions with impact depth. **No code is ever modified — this command is strictly read-only.**
 
 ---
@@ -76,15 +78,36 @@ Print:
 
 ## Phase 2: Deep Analysis 🧠
 
-> *Codex performs root-cause analysis with the full context from Phase 1*
+> *`fw-debugger` persona performs systematic root-cause analysis*
 
-**Goal:** Identify the root cause, not just the symptom.
+**Goal:** Identify the root cause, not just the symptom. The `fw-debugger` persona enforces evidence-backed diagnosis with a mandatory causal chain.
 
-Run Codex with diagnostic-specialist instructions:
+**Primary path — invoke `fw-debugger` persona directly:**
+
+Task the `fw-debugger` sub-agent with the full context from Phase 1:
+```
+Task(fw-debugger): Diagnose the following issue. Produce a full Debug Report with causal chain, evidence, hypotheses eliminated, and proposed fix.
+
+ISSUE: <ISSUE_DESCRIPTION>
+SEVERITY: <SEVERITY>
+
+OBSERVED SYMPTOMS:
+<contents of 01-observe.md>
+
+FAILING CODE:
+<the actual code block from Phase 1, with file path and line numbers>
+```
+
+**Fallback — if fw-debugger persona not installed, run Codex:**
 ```bash
-"${CLAUDE_PLUGIN_ROOT}/scripts/dispatch.sh" "codex" "You are a diagnostic specialist. Analyse the following issue and identify the ROOT CAUSE — not just the symptom.
+"${CLAUDE_PLUGIN_ROOT}/scripts/dispatch.sh" "codex" "You are a forensic debugger. IMPORTANT: Do NOT modify any files.
 
-IMPORTANT: Do NOT modify any files. This is a read-only analysis.
+Diagnose the following issue. Produce:
+1. Full causal chain: [Root Cause] → [Intermediate Effect] → [Observed Failure]
+2. Root cause with specific file:line evidence
+3. Hypotheses considered and eliminated with evidence
+4. Minimal proposed fix (describe only — do not apply)
+5. Impact depth: surface / local / module / system
 
 ISSUE: <ISSUE_DESCRIPTION>
 
@@ -92,16 +115,7 @@ OBSERVED SYMPTOMS:
 <contents of 01-observe.md>
 
 FAILING CODE:
-<the actual code block from Phase 1, with file path and line numbers>
-
-Analyse:
-1. What is the exact root cause? Trace the logical error step by step.
-2. Why does this code fail? What assumption is broken?
-3. What is the trigger? Under what conditions does this manifest?
-4. Data flow: trace inputs → transformations → where correct behaviour diverges from actual
-5. Are there related issues in the same area that could cause similar problems?
-
-Be specific. Reference exact variable names, function calls, and line numbers. Do NOT suggest fixes yet — only diagnose." <AFFECTED_FILES>
+<the actual code block from Phase 1, with file path and line numbers>" <AFFECTED_FILES>
 ```
 
 Save output to `$SESSION_DIR/02-analysis.md`.
@@ -110,6 +124,7 @@ Print:
 ```
 ✅ Phase 2 Complete — Root Cause Analysis
    Root cause: <1-line summary>
+   Impact depth: <surface / local / module / system>
 ```
 
 ---

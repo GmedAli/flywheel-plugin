@@ -4,6 +4,8 @@ description: Proactive test generation — coverage analysis, gap detection, and
 
 # Test Generation Workflow
 
+> **Persona active:** `fw-test-generator` — risk-prioritised coverage specialist. Maps P0→P3 gaps, learns project test conventions before writing a single test, and ensures every generated test is runnable with no placeholders.
+
 This command runs a structured 5-phase workflow to analyse test coverage gaps and generate missing tests. Claude orchestrates specialized agents at each phase. **Tests are generated to match your existing framework, conventions, and patterns.**
 
 ---

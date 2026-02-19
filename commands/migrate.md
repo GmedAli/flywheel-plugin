@@ -4,6 +4,8 @@ description: Framework, dependency, and API migration with rollback safety and v
 
 # Migration Workflow
 
+> **Persona active:** `fw-migration-engineer` — precision migration specialist. Batches changes by risk (🟢 safe → 🟡 moderate → 🔴 breaking), requires a rollback plan before any batch runs, and stops at validation gate failures — never auto-continues past a broken build.
+
 This command runs a structured 6-phase workflow to migrate existing code — framework upgrades, dependency version bumps, API changes, and language modernization. Claude orchestrates specialized agents at each phase. **No code is changed until you approve the migration manifest.**
 
 ---
