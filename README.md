@@ -29,6 +29,27 @@ flowchart LR
 
 ---
 
+## 🚀 Setup
+
+```bash
+
+# 1. Add this repository as a plugin marketplace
+claude plugin marketplace add gmedali/flywheel-plugin
+
+# 2. Install the plugin
+claude plugin install fw
+```
+
+once you run claude, please run:
+
+```bash
+/fw:setup
+```
+
+That's it — all `/fw:` commands are ready to use immediately.
+
+---
+
 ## 🎭 Personas
 
 Flywheel ships 8 **native Claude Code sub-agents** — persistent specialists that each `/fw:` command activates. They run in isolated context windows with curated tool access and model routing, replacing ad-hoc prompt strings with real behavioural mandates.
@@ -47,34 +68,6 @@ Flywheel ships 8 **native Claude Code sub-agents** — persistent specialists th
 **Installation:** `/fw:setup` runs `scripts/install-personas.sh` to copy all personas to `~/.claude/agents/`. Upgrade anytime:
 ```bash
 "${CLAUDE_PLUGIN_ROOT}/scripts/install-personas.sh" --force
-```
-
-### Installation
-
-```bash
-git clone https://github.com/yourusername/flywheel-plugin.git
-
-# Install as a Claude Code plugin
-cp -r flywheel-plugin ~/.claude-code/plugins/fw
-```
-
-### Setup
-
-Inside Claude Code, run:
-```
-/fw:setup
-```
-
-This will detect available providers (Codex, Claude, Gemini) and create `~/.flywheel/`.
-
-```
-🔍 Flywheel Provider Detection
-─────────────────────────────────
-  🔴 Codex CLI:  ✓ Available (auth: oauth, model: gpt-5.3-codex)
-  🔵 Claude CLI: ✓ Available (v2.1.44)
-  🟡 Gemini CLI: ✓ Available (auth: possible-oauth)
-─────────────────────────────────
-  3 providers ready
 ```
 
 ---
@@ -347,28 +340,6 @@ agents:
 | `FLYWHEEL_PROJECT` | `<git repo name>` | Override auto-detected project name for session isolation |
 
 > **Legacy**: `FLYWHEEL_TIMEOUT` still works as a fallback for `FLYWHEEL_MAX_TIMEOUT`.
-
----
-
-## 📖 Provider Setup
-
-### Codex (Recommended for Code)
-
-```bash
-npm install -g @openai/codex
-codex login
-# or: export OPENAI_API_KEY="sk-..."
-```
-
-### Claude (Built-in)
-Comes with Claude Code — nothing to install.
-
-### Gemini (For Research)
-
-```bash
-npm install -g @google/gemini-cli
-export GEMINI_API_KEY="..."
-```
 
 ---
 
