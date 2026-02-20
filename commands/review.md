@@ -4,9 +4,9 @@ description: Review PRs with configurable depth and output options
 
 # PR Review Command
 
-> **Persona active:** `fw-code-reviewer` — principal engineer reviewer. Classifies findings as **blocking** (merge stops) vs **advisory** (worth fixing). Every finding includes file:line, exact issue, and concrete change suggestion.
+> **Persona active:** `fw-code-reviewer` — principal engineer reviewer. Classifies findings by severity (`critical`, `major`, `minor`). Every finding is posted as an **inline comment on the exact line of code** with the issue, impact, and fix.
 
-This command will help you review Pull Requests with varying levels of depth and provide feedback through different channels.
+This command reviews Pull Requests and posts findings as inline draft comments on the specific lines of code — not as one bundled comment.
 
 ## Step 1: Ask User for Configuration
 
@@ -19,14 +19,10 @@ Before we begin the review, I need to ask you a few questions to configure the r
 
 **Question 2: How would you like to receive the review?**
 - `local` - Save the review as a markdown file in the current directory
-- `draft` - Submit the review as a draft on GitHub (allows you to review before publishing)
-- `direct` - Submit the review directly to GitHub
+- `draft` - Post inline comments as a **pending** GitHub review (you can review and edit before publishing)
+- `direct` - Post inline comments and submit the review immediately to GitHub
 
-**Question 3: Should I include proposed solutions?**
-- `yes` - Include code suggestions and proposed fixes for identified issues
-- `no` - Only identify issues without providing solutions
-
-**Question 4 (Optional): Which PR would you like to review?**
+**Question 3 (Optional): Which PR would you like to review?**
 - Leave blank to see a list of available PRs, or
 - Provide a PR number directly (e.g., `123`)
 
@@ -81,6 +77,18 @@ Fetch the PR details and diff:
    ```bash
    gh pr view <PR_NUMBER> --json files --jq '.files[].path'
    ```
+
+4. Get the HEAD commit SHA (needed for inline comments):
+   ```bash
+   gh pr view <PR_NUMBER> --json headRefOid -q .headRefOid
+   ```
+
+5. Get the repository owner/name:
+   ```bash
+   gh repo view --json nameWithOwner -q .nameWithOwner
+   ```
+
+Store `COMMIT_SHA` and `OWNER_REPO` — they are required for posting inline comments in Step 7.
 
 Now proceed to Step 5 based on the selected review level.
 
@@ -186,75 +194,66 @@ Use `grep` to find files that import the changed files, or files imported by the
 
 ---
 
-## Step 6: Structure the Review
+## Step 6: Structure Findings for Inline Comments
 
-Organize your findings into a structured review with the following sections:
+> **IMPORTANT**: Each finding must reference a line that exists in the PR diff. The GitHub API only allows inline comments on lines that appear in the diff. If a finding relates to code not in the diff, include it in the review summary body instead.
 
-### Review Structure:
+For each issue found, produce a structured finding:
 
-```markdown
-# PR Review: <PR_TITLE>
-
-**Review Level**: <LOW/MEDIUM/CRITICAL>
-**PR Number**: #<NUMBER>
-**Reviewed by**: AI Assistant
-**Date**: <CURRENT_DATE>
-
----
-
-## Summary
-
-<1-2 paragraph summary of the PR and overall assessment>
-
----
-
-## Issues Found
-
-### Critical Issues 🔴
-<List of critical issues that must be addressed>
-
-### Important Issues 🟡
-<List of important issues that should be addressed>
-
-### Minor Issues 🟢
-<List of minor issues or suggestions>
-
----
-
-## Detailed Review by File
-
-### `<file_path_1>`
-
-**Lines <start>-<end>**: <Issue description>
-<If solutions are enabled, include proposed fix>
-
-**Lines <start>-<end>**: <Issue description>
-<If solutions are enabled, include proposed fix>
-
-### `<file_path_2>`
-
-...
-
----
-
-## Positive Observations ✅
-
-<List things that were done well>
-
----
-
-## Recommendations
-
-<Overall recommendations for improving the PR>
-
----
-
-## Review Decision
-
-<APPROVE / REQUEST CHANGES / COMMENT>
+```
+### Finding
+- **file:** <relative path to file>
+- **line:** <line number in the new version of the file>
+- **end_line:** <end line number, only if the finding spans multiple lines>
+- **severity:** critical | major | minor
+- **issue:** <1 sentence — what is wrong>
+- **impact:** <1 sentence — why it matters>
+- **fix:**
+\```<lang>
+<corrected code>
+\```
 ```
 
-Once the review is structured, proceed to Step 7.
+### Inline Comment Body Format
+
+Each finding becomes an inline comment with this body:
+
+```
+<SEVERITY_EMOJI> **<severity>** — <issue>
+
+**Impact:** <impact>
+
+**Fix:**
+\```<lang>
+<corrected code>
+\```
+```
+
+Severity emoji mapping:
+- `🔴 critical` — must fix before merge
+- `🟠 major` — should fix, risk if ignored
+- `🟡 minor` — nice to fix, low risk
+
+### Review Summary Body
+
+The top-level review body (not an inline comment) should be a brief summary:
+
+```
+## Review: <PR_TITLE>
+
+**Level:** <low/medium/critical>
+**Findings:** 🔴 <N> critical · 🟠 <N> major · 🟡 <N> minor
+
+**Verdict:** <APPROVE / REQUEST CHANGES / COMMENT>
+
+<2-3 sentence summary of the most important themes>
+```
+
+### Positives (in summary body)
+
+If noteworthy things were done well, add a brief `**Positives:**` line in the summary body. Keep it specific and short.
+
+Once findings are structured, proceed to Step 7.
 
 ---
 
@@ -263,59 +262,131 @@ Once the review is structured, proceed to Step 7.
 Based on the user's selected output format:
 
 ### For LOCAL format:
-1. Save the review markdown to a file named: `pr-<PR_NUMBER>-review-<TIMESTAMP>.md`
-2. Inform the user where the file was saved
-3. Done!
+1. Save all findings as a markdown file named: `pr-<PR_NUMBER>-review-<TIMESTAMP>.md`
+2. Use the finding format from Step 6 as-is (readable in markdown)
+3. Inform the user where the file was saved
+4. Done!
 
 ---
 
-### For DRAFT format:
-1. Save the review to a temporary file
-2. Submit as a draft review using:
-   ```bash
-   gh pr review <PR_NUMBER> --comment --body-file <temp_file>
-   ```
-3. Inform the user that the review has been submitted as a draft
-4. Provide the URL to view the draft review on GitHub
-5. Done!
+### For DRAFT format (pending review with inline comments):
+
+1. Construct a JSON payload file at `/tmp/pr-<PR_NUMBER>-review.json` with this structure:
+
+```json
+{
+  "commit_id": "<COMMIT_SHA from Step 4>",
+  "body": "<review summary from Step 6>",
+  "comments": [
+    {
+      "path": "<file path>",
+      "line": <line_number>,
+      "side": "RIGHT",
+      "body": "<formatted inline comment body>"
+    },
+    {
+      "path": "<file path>",
+      "start_line": <start_line>,
+      "start_side": "RIGHT",
+      "line": <end_line>,
+      "side": "RIGHT",
+      "body": "<formatted inline comment body>"
+    }
+  ]
+}
+```
+
+**Rules for the `comments` array:**
+- `line` is the line number in the **new version** of the file (RIGHT side of the diff)
+- For multi-line findings, include `start_line` and `start_side` alongside `line` and `side`
+- For single-line findings, only `line` and `side` are needed
+- `side` is always `"RIGHT"` unless commenting on deleted code (use `"LEFT"`)
+- Only include comments on lines that appear in the PR diff
+
+2. Submit as a **PENDING** review (no `event` field = draft):
+
+```bash
+gh api \
+  --method POST \
+  -H "Accept: application/vnd.github+json" \
+  -H "X-GitHub-Api-Version: 2022-11-28" \
+  /repos/<OWNER_REPO>/pulls/<PR_NUMBER>/reviews \
+  --input /tmp/pr-<PR_NUMBER>-review.json
+```
+
+3. Save the returned review `id` from the response
+
+4. Inform the user:
+   - The review is posted as a **pending draft** — only visible to them
+   - They can view, edit, or delete individual comments in the GitHub PR UI
+   - When ready, they can publish it from GitHub or you can submit it with a follow-up command
+
+5. Clean up: `rm /tmp/pr-<PR_NUMBER>-review.json`
+
+6. Done!
 
 ---
 
-### For DIRECT format:
+### For DIRECT format (submit immediately with inline comments):
+
 1. Determine the review decision based on findings:
-   - If critical issues found → REQUEST CHANGES
-   - If no critical issues → COMMENT (neutral feedback)
-   - If explicitly positive → APPROVE (only if the user confirms)
+   - If any `critical` findings → `REQUEST_CHANGES`
+   - If only `major` or `minor` findings → `COMMENT`
+   - If no findings or explicitly positive → `APPROVE` (only if the user confirms)
 
-2. For code-specific comments, format them for GitHub:
-   ```bash
-   # For line-specific comments, use the GitHub review API
-   gh api repos/{owner}/{repo}/pulls/<PR_NUMBER>/reviews \
-     --method POST \
-     --field event="COMMENT" \
-     --field body="<review_summary>" \
-     --field comments[][path]="<file_path>" \
-     --field comments[][line]=<line_number> \
-     --field comments[][body]="<comment_text>"
-   ```
+2. Construct the same JSON payload as the DRAFT format, but **include the `event` field**:
+
+```json
+{
+  "commit_id": "<COMMIT_SHA>",
+  "body": "<review summary>",
+  "event": "REQUEST_CHANGES",
+  "comments": [ ... ]
+}
+```
+
+Valid `event` values: `APPROVE`, `REQUEST_CHANGES`, `COMMENT`
 
 3. Submit the review:
-   - If REQUEST CHANGES:
-     ```bash
-     gh pr review <PR_NUMBER> --request-changes --body "<summary>"
-     ```
-   - If COMMENT:
-     ```bash
-     gh pr review <PR_NUMBER> --comment --body "<summary>"
-     ```
-   - If APPROVE:
-     ```bash
-     gh pr review <PR_NUMBER> --approve --body "<summary>"
-     ```
 
-4. Inform the user that the review has been submitted
-5. Provide the URL to view the review on GitHub
-6. Done!
+```bash
+gh api \
+  --method POST \
+  -H "Accept: application/vnd.github+json" \
+  -H "X-GitHub-Api-Version: 2022-11-28" \
+  /repos/<OWNER_REPO>/pulls/<PR_NUMBER>/reviews \
+  --input /tmp/pr-<PR_NUMBER>-review.json
+```
+
+4. Clean up: `rm /tmp/pr-<PR_NUMBER>-review.json`
+
+5. Inform the user that the review has been submitted with the decision
+6. Provide the PR URL: `gh pr view <PR_NUMBER> --json url -q .url`
+7. Done!
+
+---
+
+## Submitting a Pending Draft Review
+
+If the user previously chose `draft` and now wants to submit it:
+
+1. Find the pending review:
+   ```bash
+   gh api /repos/<OWNER_REPO>/pulls/<PR_NUMBER>/reviews \
+     --jq '.[] | select(.state == "PENDING") | {id: .id, body: .body}'
+   ```
+
+2. Submit it:
+   ```bash
+   gh api \
+     --method POST \
+     -H "Accept: application/vnd.github+json" \
+     -H "X-GitHub-Api-Version: 2022-11-28" \
+     /repos/<OWNER_REPO>/pulls/<PR_NUMBER>/reviews/<REVIEW_ID>/events \
+     -f event="COMMENT"
+   ```
+
+   Use `REQUEST_CHANGES` or `APPROVE` instead of `COMMENT` based on findings.
 
 ---
 
@@ -337,7 +408,12 @@ At any step, if an error occurs:
    - Inform the user they may not have permission to review this PR
    - Suggest saving as local file instead
 
-5. **Network errors**:
+5. **Inline comment on non-diff line (422 error)**:
+   - The GitHub API only allows comments on lines in the diff
+   - If a comment fails, move it to the review summary body instead
+   - Retry the submission without the failing comment
+
+6. **Network errors**:
    - Retry once
    - If still fails, offer to save the review locally
 
@@ -345,10 +421,10 @@ At any step, if an error occurs:
 
 ## Notes
 
-- Be thorough but concise in your feedback
-- Focus on actionable items
-- Provide context for why something is an issue
-- If proposing solutions, ensure they are tested and correct
-- Respect the token budget for each review level
-- For critical reviews, prioritize the most impactful issues
+- Every finding gets an inline comment on the exact line — no bundled walls of text
+- Keep comment bodies short and scannable: severity → issue → impact → fix
+- Only comment on lines that appear in the PR diff
+- For issues about missing code (e.g., missing tests), put them in the review summary body
+- Be thorough but concise — the developer should understand the issue in 5 seconds
 - Always be constructive and professional in tone
+- Clean up temporary JSON files after submission
