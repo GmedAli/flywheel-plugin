@@ -19,7 +19,19 @@ This command validates all AI provider integrations and configures the plugin fo
         ```
     *   **Message**: "Project directory created: `~/.flywheel/projects/<PROJECT_NAME>/`"
 
-3.  **Initialize Agents Config**:
+3.  **Grant Claude Code Permissions for Project Directory**:
+    *   Run the permissions helper so that `Write`, `Edit`, and `Bash` operations targeting the project directory are auto-approved without user prompts:
+        ```bash
+        "${CLAUDE_PLUGIN_ROOT}/scripts/grant-permissions.sh" "$PROJECT_NAME"
+        ```
+    *   The script is **idempotent** — safe to run on every setup. It patches `~/.claude/settings.json`, adding three entries only if they are not already present:
+        *   `Write(~/.flywheel/projects/<PROJECT_NAME>/**)` — file-write tool
+        *   `Edit(~/.flywheel/projects/<PROJECT_NAME>/**)` — file-edit tool
+        *   `Bash(*~/.flywheel/projects/<PROJECT_NAME>*)` — any shell command referencing the directory
+    *   Uses `jq` when available; falls back to `python3`; prints manual instructions if neither is found.
+    *   **Message**: "Permissions granted for `~/.flywheel/projects/<PROJECT_NAME>/`"
+
+4.  **Initialize Agents Config**:
     *   Check if `~/.flywheel/agents.yaml` exists.
     *   **If NOT exists**:
         *   Copy the default configuration:
@@ -28,7 +40,7 @@ This command validates all AI provider integrations and configures the plugin fo
             ```
         *   **Message**: "Initialized default agent configuration."
 
-4.  **Migrate Legacy Sessions** (if any):
+5.  **Migrate Legacy Sessions** (if any):
     *   Check if flat session directories exist at `~/.flywheel/` (implement/, debug/, results/, etc.)
     *   If found, inform the user:
         ```
