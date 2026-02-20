@@ -167,6 +167,35 @@ Flywheel ships 8 **native Claude Code sub-agents** — persistent specialists th
 
 ---
 
+### `/fw:document <topic>`
+
+**5-phase documentation workflow.** Researches the codebase, cross-references ecosystem context, and produces a polished standalone markdown document with mermaid diagrams. **Never modifies code.**
+
+```
+/fw:document how does the authorizer work?
+/fw:document the request lifecycle from ingress to response
+/fw:document dispatch.sh — what it does and how to use it
+```
+
+**Phases:**
+
+| # | Phase | Agent | What happens |
+|---|-------|-------|-------------|
+| 0 | Parse & Classify | Claude | Classifies `narrow` / `broad` / `architectural` scope |
+| 1 | Codebase Deep Scan | Claude | Greps, reads, traces call chains, maps component relationships |
+| 2 | Ecosystem Cross-Reference | `fw-researcher` / Gemini | Patterns, conventions, gotchas (broad/arch only) |
+| 3 | Synthesize Document | Claude | Writes markdown with mermaid diagrams, saves to project |
+| 4 | **User Gate** | **You** | `approve` / `refine` / `deeper` / `discard` |
+
+**Scope behaviour:**
+- `narrow` (single function/config/endpoint) — skips ecosystem research, codebase alone is sufficient
+- `broad` (feature/module/workflow) — full workflow
+- `architectural` (system design/data flow/cross-service) — full workflow + expanded research + additional diagram types
+
+**Output:** A markdown document saved to `docs/<topic>.md` or `claudedocs/<topic>.md` in your project, with an overview, ELI5 summary, detailed walkthrough, mermaid diagrams (flowcharts, sequence diagrams, class diagrams — only the types relevant to the topic), key files table, and related topics.
+
+---
+
 ### `/fw:delegate [using <provider>] <task>`
 
 Delegate a single task to a sub-agent. Best for one-shot tasks.
@@ -393,6 +422,7 @@ flywheel-plugin/
 │   ├── design.md       # Research-driven design workflow (6 phases)
 │   ├── implement.md    # Full feature workflow (9 phases)
 │   ├── debug.md        # Diagnostic workflow (6 phases)
+│   ├── document.md     # Documentation workflow (5 phases)
 │   ├── delegate.md     # Single-task delegation
 │   ├── review.md       # PR code review
 │   ├── migrate.md      # Migration workflow (6 phases)
@@ -426,6 +456,7 @@ flywheel-plugin/
         ├── design/                 # /fw:design sessions
         ├── implement/              # /fw:implement sessions
         ├── debug/                  # /fw:debug sessions
+        ├── document/               # /fw:document sessions
         ├── migrate/                # /fw:migrate sessions
         ├── harden/                 # /fw:harden sessions
         ├── test/                   # /fw:test sessions
