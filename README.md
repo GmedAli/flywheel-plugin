@@ -64,7 +64,7 @@ Flywheel ships 9 **native Claude Code sub-agents** — persistent specialists th
 | `fw-tdd-specialist` | sonnet | `/fw:tdd` | Red→Green→Refactor enforcer — refuses implementation without failing test |
 | `fw-test-generator` | sonnet | `/fw:test` | P0→P3 risk-prioritised coverage — learns your conventions before writing |
 | `fw-migration-engineer` | sonnet | `/fw:migrate` | Batched migrations with mandatory rollback plans and validation gates |
-| `fw-fe-designer` | sonnet | `/fw:fe-design` | Distinctive, production-grade frontend interfaces — zero generic AI aesthetics; activates the **FE-design** skill |
+| `fw-fe-designer` | sonnet | `/fw:fe-design` | Distinctive, production-grade frontend interfaces — zero generic AI aesthetics |
 
 **Installation:** `/fw:setup` runs `scripts/install-personas.sh` to copy all personas to `~/.claude/agents/`. Upgrade anytime:
 ```bash
@@ -77,7 +77,7 @@ Flywheel ships 9 **native Claude Code sub-agents** — persistent specialists th
 
 ### `/fw:fe-design <description>`
 
-**Build production-grade frontend interfaces with a committed aesthetic direction.** Unlike `/fw:design`, this command produces **working, runnable code** directly. Activates `fw-fe-designer` + the FE-design skill.
+**Build production-grade frontend interfaces with a committed aesthetic direction.** Unlike `/fw:design`, this command produces **working, runnable code** directly. Activates `fw-fe-designer`.
 
 ```
 /fw:fe-design a dashboard for real-time analytics
@@ -445,10 +445,7 @@ flywheel-plugin/
 │       ├── fw-tdd-specialist.md    # sonnet — TDD cycles
 │       ├── fw-test-generator.md    # sonnet — coverage generation
 │       ├── fw-migration-engineer.md # sonnet — migration planning
-│       └── fw-fe-designer.md       # sonnet — frontend UI & design (FE-design skill)
-├── skills/
-│   └── FE-design/
-│       └── SKILL.md        # Frontend design aesthetic guidelines & workflow
+│       └── fw-fe-designer.md       # sonnet — frontend UI & design
 ├── commands/
 │   ├── design.md       # Research-driven design workflow (6 phases)
 │   ├── fe-design.md    # Frontend build workflow — code output (4 phases)
