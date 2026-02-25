@@ -77,6 +77,7 @@ This command validates all AI provider integrations and configures the plugin fo
     fw-tdd-specialist.md     — /fw:tdd (Red → Green → Refactor)
     fw-test-generator.md     — /fw:test (coverage gap analysis)
     fw-migration-engineer.md — /fw:migrate (breaking change handling)
+    fw-fe-designer.md        — /fw:design (frontend UI & component tasks)
     ```
 
 4.  **If personas need updating** (e.g. after a plugin upgrade):
@@ -111,3 +112,5 @@ This command validates all AI provider integrations and configures the plugin fo
     *   `/fw:migrate` — Framework/dependency migration with rollback
     *   `/fw:harden` — Security audit (OWASP, CVEs, secrets)
     *   `/fw:cleanup` — Manage and clear session caches
+
+> **Skills available**: `FE-design` — activated automatically by `fw-fe-designer` for any frontend UI task. See `skills/FE-design/SKILL.md` for details.
