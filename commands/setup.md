@@ -111,6 +111,7 @@ This command validates all AI provider integrations and configures the plugin fo
     *   `/fw:test` — Proactive test generation and coverage analysis
     *   `/fw:migrate` — Framework/dependency migration with rollback
     *   `/fw:harden` — Security audit (OWASP, CVEs, secrets)
+    *   `/fw:fe-design` — Build production-grade frontend interfaces (activates FE-design skill)
     *   `/fw:cleanup` — Manage and clear session caches
 
 > **Skills available**: `FE-design` — activated automatically by `fw-fe-designer` for any frontend UI task. See `skills/FE-design/SKILL.md` for details.

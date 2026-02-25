@@ -52,7 +52,7 @@ That's it — all `/fw:` commands are ready to use immediately.
 
 ## 🎭 Personas
 
-Flywheel ships 8 **native Claude Code sub-agents** — persistent specialists that each `/fw:` command activates. They run in isolated context windows with curated tool access and model routing, replacing ad-hoc prompt strings with real behavioural mandates.
+Flywheel ships 9 **native Claude Code sub-agents** — persistent specialists that each `/fw:` command activates. They run in isolated context windows with curated tool access and model routing, replacing ad-hoc prompt strings with real behavioural mandates.
 
 | Persona | Model | Used by | Role |
 |---------|-------|---------|------|
@@ -64,6 +64,7 @@ Flywheel ships 8 **native Claude Code sub-agents** — persistent specialists th
 | `fw-tdd-specialist` | sonnet | `/fw:tdd` | Red→Green→Refactor enforcer — refuses implementation without failing test |
 | `fw-test-generator` | sonnet | `/fw:test` | P0→P3 risk-prioritised coverage — learns your conventions before writing |
 | `fw-migration-engineer` | sonnet | `/fw:migrate` | Batched migrations with mandatory rollback plans and validation gates |
+| `fw-fe-designer` | sonnet | `/fw:fe-design` | Distinctive, production-grade frontend interfaces — zero generic AI aesthetics; activates the **FE-design** skill |
 
 **Installation:** `/fw:setup` runs `scripts/install-personas.sh` to copy all personas to `~/.claude/agents/`. Upgrade anytime:
 ```bash
@@ -73,6 +74,32 @@ Flywheel ships 8 **native Claude Code sub-agents** — persistent specialists th
 ---
 
 ## 📚 Commands
+
+### `/fw:fe-design <description>`
+
+**Build production-grade frontend interfaces with a committed aesthetic direction.** Unlike `/fw:design`, this command produces **working, runnable code** directly. Activates `fw-fe-designer` + the FE-design skill.
+
+```
+/fw:fe-design a dashboard for real-time analytics
+/fw:fe-design a luxury login page for a fintech app
+/fw:fe-design a component library card in React
+```
+
+**Phases:**
+
+| # | Phase | What happens |
+|---|-------|--------------|
+| 0 | Parse & Clarify | Brief, tech stack, up to 3 follow-up questions |
+| 1 | Aesthetic Direction | Commits to a named visual approach, typography, palette, signature element |
+| 2 | Build | Complete, runnable code — HTML/CSS/JS, React, or Vue |
+| 3 | Present | Design direction · Rationale · Code · Usage |
+| 4 | Iterate / Hand Off | `refine` / `variant` / `review` / `implement` / `done` |
+
+**Non-negotiables:** No generic fonts (Inter, Roboto, Arial). No purple-gradients-on-white. CSS variables everywhere. At least one purposeful animation. Depth on every background.
+
+**Output:** Complete, runnable code saved to `~/.flywheel/projects/<project>/fe-design/<session>/`.
+
+---
 
 ### `/fw:design <description>`
 
@@ -409,7 +436,7 @@ sequenceDiagram
 ```
 flywheel-plugin/
 ├── agents/
-│   └── personas/           # Native Claude Code sub-agents (8 personas)
+│   └── personas/           # Native Claude Code sub-agents (9 personas)
 │       ├── fw-architect.md         # opus  — design/implement planning
 │       ├── fw-researcher.md        # sonnet — ecosystem research
 │       ├── fw-debugger.md          # sonnet — root-cause analysis
@@ -417,9 +444,14 @@ flywheel-plugin/
 │       ├── fw-code-reviewer.md     # sonnet — PR code review
 │       ├── fw-tdd-specialist.md    # sonnet — TDD cycles
 │       ├── fw-test-generator.md    # sonnet — coverage generation
-│       └── fw-migration-engineer.md # sonnet — migration planning
+│       ├── fw-migration-engineer.md # sonnet — migration planning
+│       └── fw-fe-designer.md       # sonnet — frontend UI & design (FE-design skill)
+├── skills/
+│   └── FE-design/
+│       └── SKILL.md        # Frontend design aesthetic guidelines & workflow
 ├── commands/
 │   ├── design.md       # Research-driven design workflow (6 phases)
+│   ├── fe-design.md    # Frontend build workflow — code output (4 phases)
 │   ├── implement.md    # Full feature workflow (9 phases)
 │   ├── debug.md        # Diagnostic workflow (6 phases)
 │   ├── document.md     # Documentation workflow (5 phases)
