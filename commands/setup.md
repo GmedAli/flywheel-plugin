@@ -113,3 +113,6 @@ This command validates all AI provider integrations and configures the plugin fo
     *   `/fw:harden` — Security audit (OWASP, CVEs, secrets)
     *   `/fw:fe-design` — Build production-grade frontend interfaces (activates FE-design skill)
     *   `/fw:cleanup` — Manage and clear session caches
+
+3.  Note available cross-cutting skills:
+    *   `context7-research` — auto-enriches all research phases with official library documentation (requires Context7 MCP server). See `skills/context7-research/SKILL.md` for details.

@@ -136,9 +136,22 @@ Print:
 
 **Goal:** Validate the diagnosis against ecosystem knowledge — is this a known library bug? A documented gotcha? A common anti-pattern?
 
-Run Gemini:
+**Context7 pre-enrichment** — if the root cause from Phase 2 implicates a specific library, gather official documentation first:
+
+1. Identify the library/framework implicated by the root cause (e.g., if the issue is in Express middleware, look up "Express")
+2. Call `mcp__context7__resolve-library-id` for the implicated library
+3. Call `mcp__context7__query-docs` with query: "Known issues, gotchas, and common errors with <library> related to <ROOT_CAUSE>"
+4. If Context7 returns results, prepend them to the Gemini prompt as `OFFICIAL DOCUMENTATION CONTEXT`
+5. If no specific library is implicated, or Context7 fails/returns nothing, skip silently
+
+**Run Gemini:**
 ```bash
-"${CLAUDE_PLUGIN_ROOT}/scripts/dispatch.sh" "gemini" "Research whether the following issue is a known problem, documented gotcha, or common anti-pattern in the relevant ecosystem.
+"${CLAUDE_PLUGIN_ROOT}/scripts/dispatch.sh" "gemini" "OFFICIAL DOCUMENTATION CONTEXT (via Context7):
+<Context7 findings, or omit this section if none>
+
+---
+
+Research whether the following issue is a known problem, documented gotcha, or common anti-pattern in the relevant ecosystem.
 
 ISSUE: <ISSUE_DESCRIPTION>
 

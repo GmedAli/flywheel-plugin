@@ -90,9 +90,21 @@ Print:
 
 **Goal:** Gather external knowledge — best practices, existing solutions, packages, pitfalls.
 
-Run Gemini:
+**Context7 pre-enrichment** — before dispatching to Gemini, gather official documentation:
+
+1. Identify technologies relevant to the design brief from Phase 1 findings (max 3)
+2. For each, call `mcp__context7__resolve-library-id` then `mcp__context7__query-docs` with query: "Architecture patterns and best practices for <DESIGN_BRIEF> with <library>"
+3. If Context7 returns results, prepend them to the Gemini prompt as `OFFICIAL DOCUMENTATION CONTEXT`
+4. If Context7 fails or returns nothing, skip silently and proceed without enrichment
+
+**Run Gemini:**
 ```bash
-"${CLAUDE_PLUGIN_ROOT}/scripts/dispatch.sh" "gemini" "Research best practices and existing solutions for the following design goal. Be specific and actionable — no generic advice.
+"${CLAUDE_PLUGIN_ROOT}/scripts/dispatch.sh" "gemini" "OFFICIAL DOCUMENTATION CONTEXT (via Context7):
+<Context7 findings, or omit this section if none>
+
+---
+
+Research best practices and existing solutions for the following design goal. Be specific and actionable — no generic advice.
 
 DESIGN GOAL: <DESIGN_BRIEF>
 

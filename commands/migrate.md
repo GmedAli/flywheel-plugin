@@ -64,11 +64,24 @@ You (Claude) scan the current project for:
 
 Summarise findings in `$SESSION_DIR/01-inventory.md`.
 
-### 1b — Ecosystem Research (Gemini, minor + major only)
+### 1b — Ecosystem Research (minor + major only)
 
-Run:
+**Context7 pre-enrichment** — before dispatching to Gemini, gather official migration documentation:
+
+1. Identify the migration target technology (e.g., "React", "Express", "Prisma") and version range
+2. Call `mcp__context7__resolve-library-id` for the target technology
+3. Call `mcp__context7__query-docs` with query: "Migration guide for <TARGET>. Breaking changes, deprecated APIs, and upgrade steps from <SOURCE_VERSION> to <TARGET_VERSION>"
+4. If Context7 returns results, prepend them to the Gemini prompt as `OFFICIAL DOCUMENTATION CONTEXT`
+5. If Context7 fails or returns nothing, skip silently and proceed without enrichment
+
+**Run Gemini:**
 ```bash
-"${CLAUDE_PLUGIN_ROOT}/scripts/dispatch.sh" "gemini" "Research the migration path for: <MIGRATION_DESCRIPTION>.
+"${CLAUDE_PLUGIN_ROOT}/scripts/dispatch.sh" "gemini" "OFFICIAL DOCUMENTATION CONTEXT (via Context7):
+<Context7 migration docs, or omit this section if none>
+
+---
+
+Research the migration path for: <MIGRATION_DESCRIPTION>.
 
 Focus on:
 1. Official migration guide — step-by-step instructions from the maintainers

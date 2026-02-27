@@ -95,6 +95,12 @@ Task(fw-researcher): Research the following topic in the context of the project'
 
 TOPIC: <TOPIC>
 
+Detected technologies: <TECHNOLOGIES_FROM_PHASE_1>
+
+IMPORTANT: Use the context7-research skill — call Context7 MCP tools first for each detected
+technology (max 3) to get official documentation before falling back to WebSearch.
+Query template: "How <TOPIC> works in <library>. API reference, usage patterns, and configuration"
+
 TECHNOLOGY STACK:
 <detected from Phase 1 — language, framework, key libraries, versions>
 
@@ -102,16 +108,29 @@ CODEBASE CONTEXT:
 <summary of key findings from Phase 1>
 
 Research:
-1. How is this pattern/feature typically implemented in the current stack? What are the conventions?
-2. Are there official documentation pages or guides for this area?
-3. Common misconceptions or gotchas to call out in documentation.
-4. How does this project's approach compare to standard practice? (conventional, custom, or anti-pattern?)
-5. Any relevant architectural patterns this topic falls under (e.g., middleware pattern, observer pattern, repository pattern).
+1. Official documentation (via Context7) — how this feature/pattern is documented officially
+2. How is this pattern/feature typically implemented in the current stack? What are the conventions?
+3. Are there official documentation pages or guides for this area?
+4. Common misconceptions or gotchas to call out in documentation.
+5. How does this project's approach compare to standard practice? (conventional, custom, or anti-pattern?)
+6. Any relevant architectural patterns this topic falls under (e.g., middleware pattern, observer pattern, repository pattern).
 ```
 
 **Fallback — if fw-researcher not available, run Gemini:**
+
+Before dispatching to Gemini, enrich the prompt with Context7 documentation:
+1. Identify technologies from the topic and Phase 1 findings (max 3)
+2. For each, call `mcp__context7__resolve-library-id` then `mcp__context7__query-docs` with query: "How <TOPIC> works in <library>. API reference, usage patterns, and configuration"
+3. If Context7 returns results, prepend them to the Gemini prompt as `OFFICIAL DOCUMENTATION CONTEXT`
+4. If Context7 fails or returns nothing, skip silently and dispatch without enrichment
+
 ```bash
-"${CLAUDE_PLUGIN_ROOT}/scripts/dispatch.sh" "gemini" "Research the following topic for documentation purposes. Provide context that helps explain how this works, not suggestions for changing it.
+"${CLAUDE_PLUGIN_ROOT}/scripts/dispatch.sh" "gemini" "OFFICIAL DOCUMENTATION CONTEXT (via Context7):
+<Context7 findings, or omit this section if none>
+
+---
+
+Research the following topic for documentation purposes. Provide context that helps explain how this works, not suggestions for changing it.
 
 TOPIC: <TOPIC>
 

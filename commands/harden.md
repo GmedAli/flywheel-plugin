@@ -139,9 +139,21 @@ Save to `$SESSION_DIR/02-dependencies.md`.
 
 ### 2b — CVE cross-reference (Gemini)
 
-Run:
+**Context7 pre-enrichment** — before dispatching to Gemini, gather official security documentation for the top packages of concern:
+
+1. From the dependency list in Phase 2a, identify the top 3 packages most relevant to the audit scope (prioritise packages with known risk or those central to the application)
+2. For each, call `mcp__context7__resolve-library-id` then `mcp__context7__query-docs` with query: "Security best practices, known vulnerabilities, and secure configuration for <package>"
+3. If Context7 returns results, prepend them to the Gemini prompt as `OFFICIAL DOCUMENTATION CONTEXT`
+4. If Context7 fails or returns nothing, skip silently and proceed without enrichment
+
+**Run Gemini:**
 ```bash
-"${CLAUDE_PLUGIN_ROOT}/scripts/dispatch.sh" "gemini" "You are a supply chain security analyst. Check the following dependencies for known vulnerabilities.
+"${CLAUDE_PLUGIN_ROOT}/scripts/dispatch.sh" "gemini" "OFFICIAL DOCUMENTATION CONTEXT (via Context7):
+<Context7 security docs, or omit this section if none>
+
+---
+
+You are a supply chain security analyst. Check the following dependencies for known vulnerabilities.
 
 DEPENDENCIES:
 <contents of 02-dependencies.md>

@@ -70,19 +70,38 @@ Summarise findings in `$SESSION_DIR/01-research-codebase.md`.
 ```
 Task(fw-researcher): Research best practices, libraries, and patterns for: <FEATURE_DESCRIPTION>.
 
+Detected technologies: <TECHNOLOGIES_FROM_CODEBASE_SCAN_AND_FEATURE_DESCRIPTION>
+
+IMPORTANT: Use the context7-research skill — call Context7 MCP tools first for each detected
+technology (max 3) to get official documentation before falling back to WebSearch.
+Query template: "Best practices and API reference for implementing <FEATURE> with <library>"
+
 Include:
-1. Recommended libraries/frameworks — rate each as ✅/⚠️/❌ with maintenance status
-2. Common implementation patterns — with concrete examples
-3. Known pitfalls and edge cases — specific and cited
-4. Security considerations — mandatory, not optional
-5. Performance implications — measurable characteristics
+1. Official documentation findings (Context7) — version-specific APIs and patterns
+2. Recommended libraries/frameworks — rate each as ✅/⚠️/❌ with maintenance status
+3. Common implementation patterns — with concrete examples
+4. Known pitfalls and edge cases — specific and cited
+5. Security considerations — mandatory, not optional
+6. Performance implications — measurable characteristics
 
 Stack context: <detected from codebase scan>
 ```
 
 **Fallback — if fw-researcher not installed, run Gemini via dispatch.sh:**
+
+Before dispatching to Gemini, enrich the prompt with Context7 documentation:
+1. Identify technologies from the feature description and codebase scan (max 3)
+2. For each, call `mcp__context7__resolve-library-id` then `mcp__context7__query-docs` with query: "Best practices and API reference for implementing <FEATURE> with <library>"
+3. If Context7 returns results, prepend them to the Gemini prompt as shown below
+4. If Context7 fails or returns nothing, skip silently and dispatch without enrichment
+
 ```bash
-"${CLAUDE_PLUGIN_ROOT}/scripts/dispatch.sh" "gemini" "Research best practices, libraries, and patterns for: <FEATURE_DESCRIPTION>. Focus on: (1) recommended libraries/frameworks, (2) common implementation patterns, (3) known pitfalls and edge cases, (4) security considerations, (5) performance implications. Be specific and actionable."
+"${CLAUDE_PLUGIN_ROOT}/scripts/dispatch.sh" "gemini" "OFFICIAL DOCUMENTATION CONTEXT (via Context7):
+<Context7 findings, or omit this section if none>
+
+---
+
+Research best practices, libraries, and patterns for: <FEATURE_DESCRIPTION>. Focus on: (1) recommended libraries/frameworks, (2) common implementation patterns, (3) known pitfalls and edge cases, (4) security considerations, (5) performance implications. Be specific and actionable."
 ```
 
 Save output to `$SESSION_DIR/01-research-ecosystem.md`.
