@@ -63,6 +63,23 @@ Save `$SESSION_DIR/00-session.md` with:
 
 **Goal:** Find vulnerabilities in the source code itself — injection, auth flaws, misconfigurations.
 
+**Sequential Thinking** (skip for `file` scope; activate for `module`, `project`, and `branch` scope):
+
+Before tasking the auditor, use structured reasoning to map attack surfaces and trust boundaries:
+
+```
+mcp__sequential-thinking__sequentialthinking({
+  thought: "What are the primary attack surfaces and trust boundaries in this scope?",
+  thoughtNumber: 1,
+  totalThoughts: 5,
+  nextThoughtNeeded: true
+})
+```
+
+Continue until `nextThoughtNeeded: false` or 8 thoughts reached. Explore each attack surface as a separate branch if needed. When complete, write a **Sequential Analysis Summary** (2-4 sentences) and include it in the auditor prompt below as `SEQUENTIAL ANALYSIS: <summary>`.
+
+If `mcp__sequential-thinking__sequentialthinking` is unavailable, skip this block silently.
+
 **Primary path — invoke `fw-security-auditor` persona directly:**
 ```
 Task(fw-security-auditor): Perform a full security audit of the following scope. Produce a complete Security Audit Report with findings prioritised by severity. Every finding must include: OWASP category, file:line, evidence, attack scenario, and proposed patch.
@@ -70,6 +87,9 @@ Task(fw-security-auditor): Perform a full security audit of the following scope.
 SCOPE: <SCOPE_DESCRIPTION>
 STACK: <DETECTED_STACK>
 FILES: <FILES_IN_SCOPE>
+
+SEQUENTIAL ANALYSIS:
+<summary from sequential thinking block above, or omit if skipped>
 ```
 
 Save output to `$SESSION_DIR/01-code-audit.md`.

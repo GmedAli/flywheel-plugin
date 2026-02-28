@@ -82,6 +82,23 @@ Print:
 
 **Goal:** Identify the root cause, not just the symptom. The `fw-debugger` persona enforces evidence-backed diagnosis with a mandatory causal chain.
 
+**Sequential Thinking** (skip for `low` severity; activate for `medium` and `critical`):
+
+Before spawning the sub-agent, use structured reasoning to frame what you know and don't know:
+
+```
+mcp__sequential-thinking__sequentialthinking({
+  thought: "What is the core failure, and at which layer of the call chain does it occur?",
+  thoughtNumber: 1,
+  totalThoughts: 5,
+  nextThoughtNeeded: true
+})
+```
+
+Continue until `nextThoughtNeeded: false` or 8 thoughts reached. Revise earlier thoughts if the observed symptoms suggest a different failure domain. When complete, write a **Sequential Analysis Summary** (2-4 sentences) and include it in the sub-agent prompt below as `SEQUENTIAL ANALYSIS: <summary>`.
+
+If `mcp__sequential-thinking__sequentialthinking` is unavailable, skip this block silently.
+
 **Primary path — invoke `fw-debugger` persona directly:**
 
 Task the `fw-debugger` sub-agent with the full context from Phase 1:
@@ -96,6 +113,9 @@ OBSERVED SYMPTOMS:
 
 FAILING CODE:
 <the actual code block from Phase 1, with file path and line numbers>
+
+SEQUENTIAL ANALYSIS:
+<summary from sequential thinking block above, or omit if skipped>
 ```
 
 **Fallback — if fw-debugger persona not installed, run Codex:**

@@ -85,6 +85,39 @@ This command validates all AI provider integrations and configures the plugin fo
     "${CLAUDE_PLUGIN_ROOT}/scripts/install-personas.sh" --force
     ```
 
+## Step 2.5: MCP Server Detection
+
+Flywheel skills depend on optional MCP servers. Check availability and guide installation for any that are missing.
+
+For each required MCP server, attempt to call a lightweight probe (or check `~/.claude/claude.json` for the server entry):
+
+**Servers to check:**
+
+1. **sequential-thinking** — enables structured iterative reasoning in `/fw:debug`, `/fw:design`, `/fw:implement`, `/fw:harden`. See `skills/sequential-thinking/SKILL.md`.
+2. **context7** — enables official library documentation enrichment in all research phases. See `skills/context7-research/SKILL.md`.
+
+Display results:
+```
+🔧 MCP Server Status:
+   ✅ sequential-thinking — available (structured reasoning enabled)
+   ✅ context7            — available (library docs enrichment enabled)
+```
+
+If a server is missing:
+```
+   ⚠️  sequential-thinking — not found
+      Install: claude mcp add sequential-thinking npx @modelcontextprotocol/server-sequential-thinking
+      Effect:  /fw:debug, /fw:design, /fw:implement, /fw:harden will skip sequential reasoning (non-blocking)
+
+   ⚠️  context7 — not found
+      Install: claude mcp add context7 npx --yes @upstash/context7-mcp
+      Effect:  research phases will use WebSearch instead of official library docs (non-blocking)
+```
+
+Both skills degrade gracefully — missing MCP servers do not break any command.
+
+---
+
 ## Step 3: Detect Providers
 
 1.  **Run provider detection** (force fresh check, ignore cache):
@@ -114,5 +147,6 @@ This command validates all AI provider integrations and configures the plugin fo
     *   `/fw:fe-design` — Build production-grade frontend interfaces (activates FE-design skill)
     *   `/fw:cleanup` — Manage and clear session caches
 
-3.  Note available cross-cutting skills:
-    *   `context7-research` — auto-enriches all research phases with official library documentation (requires Context7 MCP server). See `skills/context7-research/SKILL.md` for details.
+3.  Note available cross-cutting skills (MCP server status shown in Step 2.5):
+    *   `context7-research` — auto-enriches all research phases with official library documentation. See `skills/context7-research/SKILL.md`.
+    *   `sequential-thinking` — activates structured iterative reasoning in analysis phases. See `skills/sequential-thinking/SKILL.md`.

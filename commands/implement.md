@@ -123,11 +123,31 @@ Print a brief summary:
 
 **Goal:** Produce a technical plan with architecture decisions.
 
+**Sequential Thinking** (skip for `small` scope; activate for `medium` and `large`):
+
+Before tasking the architect, use structured reasoning to map integration risks and dependencies:
+
+```
+mcp__sequential-thinking__sequentialthinking({
+  thought: "What are the key integration risks and dependencies for this feature?",
+  thoughtNumber: 1,
+  totalThoughts: 5,
+  nextThoughtNeeded: true
+})
+```
+
+Continue until `nextThoughtNeeded: false` or 8 thoughts reached. When complete, write a **Sequential Analysis Summary** (2-4 sentences) and include it in the architect prompt below as `SEQUENTIAL ANALYSIS: <summary>`.
+
+If `mcp__sequential-thinking__sequentialthinking` is unavailable, skip this block silently.
+
 **Primary path — invoke `fw-architect` persona:**
 ```
 Task(fw-architect): Based on the following context, produce a technical implementation plan.
 
 FEATURE: <FEATURE_DESCRIPTION>
+
+SEQUENTIAL ANALYSIS:
+<summary from sequential thinking block above, or omit if skipped>
 
 CODEBASE CONTEXT:
 <contents of 01-research-codebase.md>

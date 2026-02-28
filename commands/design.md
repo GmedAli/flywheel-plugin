@@ -140,9 +140,29 @@ Print:
 
 **Goal:** Evaluate approaches, weigh trade-offs, and identify the best path forward.
 
+**Sequential Thinking** (activate for `standard` and `deep` complexity; already skipped for `light` since Phase 3 is skipped entirely):
+
+Before dispatching to Codex, use structured reasoning to map the design space:
+
+```
+mcp__sequential-thinking__sequentialthinking({
+  thought: "What are the fundamental design constraints and trade-offs for this goal?",
+  thoughtNumber: 1,
+  totalThoughts: 5,
+  nextThoughtNeeded: true
+})
+```
+
+Continue until `nextThoughtNeeded: false` or 8 thoughts reached. Branch when two viable approaches warrant separate exploration. When complete, write a **Sequential Analysis Summary** (2-4 sentences) and prepend it to the Codex prompt below as `SEQUENTIAL ANALYSIS: <summary>`.
+
+If `mcp__sequential-thinking__sequentialthinking` is unavailable, skip this block silently.
+
 Run Codex:
 ```bash
 "${CLAUDE_PLUGIN_ROOT}/scripts/dispatch.sh" "codex" "You are a senior architect. Analyse the following design problem and evaluate implementation approaches. Do NOT write any code or modify files.
+
+SEQUENTIAL ANALYSIS:
+<summary from sequential thinking block above, or omit if skipped>
 
 DESIGN GOAL: <DESIGN_BRIEF>
 
