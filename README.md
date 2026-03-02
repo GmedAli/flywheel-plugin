@@ -2,7 +2,7 @@
 
 > **Multi-provider AI orchestration plugin** — Let Claude orchestrate specialized agents (Codex, Gemini) across structured workflows
 
-[![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)](https://github.com/yourusername/flywheel-plugin)
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/yourusername/flywheel-plugin)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 ---
@@ -52,7 +52,7 @@ That's it — all `/fw:` commands are ready to use immediately.
 
 ## 🎭 Personas
 
-Flywheel ships 9 **native Claude Code sub-agents** — persistent specialists that each `/fw:` command activates. They run in isolated context windows with curated tool access and model routing, replacing ad-hoc prompt strings with real behavioural mandates.
+Flywheel ships 10 **native Claude Code sub-agents** — persistent specialists that each `/fw:` command activates. They run in isolated context windows with curated tool access and model routing, replacing ad-hoc prompt strings with real behavioural mandates.
 
 | Persona | Model | Used by | Role |
 |---------|-------|---------|------|
@@ -65,6 +65,7 @@ Flywheel ships 9 **native Claude Code sub-agents** — persistent specialists th
 | `fw-test-generator` | sonnet | `/fw:test` | P0→P3 risk-prioritised coverage — learns your conventions before writing |
 | `fw-migration-engineer` | sonnet | `/fw:migrate` | Batched migrations with mandatory rollback plans and validation gates |
 | `fw-fe-designer` | sonnet | `/fw:fe-design` | Distinctive, production-grade frontend interfaces — zero generic AI aesthetics |
+| `fw-reflector` | sonnet | `/fw:reflect` | Multi-dimensional quality synthesis — balances strengths with concerns, severity-sorted narrative reports |
 
 **Installation:** `/fw:setup` runs `scripts/install-personas.sh` to copy all personas to `~/.claude/agents/`. Upgrade anytime:
 ```bash
@@ -246,6 +247,43 @@ Delegate a single task to a sub-agent. Best for one-shot tasks.
 ### `/fw:review`
 
 Multi-agent PR code review with configurable depth (`low` / `medium` / `critical`) and output options (`local` / `draft` / `direct` to GitHub).
+
+---
+
+### `/fw:reflect [scope] [aspects]`
+
+**Multi-dimensional quality reflection.** Runs structured analysis across selectable aspects (implementation quality, clean code, design patterns, test coverage) and produces a human-readable narrative report sorted by severity. **Never modifies code.**
+
+```
+/fw:reflect staged                          # reflect on staged changes
+/fw:reflect src/auth/ implementation clean  # targeted analysis
+/fw:reflect branch all                      # full analysis of current branch
+/fw:reflect                                 # prompted scope + aspect selection
+```
+
+**Phases:**
+
+| # | Phase | Agent | What happens |
+|---|-------|-------|-------------|
+| 0 | Parse & Configure | Claude | Detects scope (`file` / `module` / `project` / `staged` / `branch`) and aspects |
+| 1 | Scope Resolution | Claude | Resolves exact file list, groups by domain, finalises depth (`quick` / `standard` / `deep`) |
+| 2 | Analysis | Claude + Codex | Per-aspect analysis passes; dispatched per chunk at `standard`/`deep` depth |
+| 3 | Synthesis | `fw-reflector` | Deduplicates findings, sorts by severity, extracts systemic patterns + recommendations |
+| 4 | Report | `fw-reflector` | Writes narrative report to `$SESSION_DIR/04-report.md` and displays it in full |
+| 5 | **User Gate** | **You** | `accept` / `deeper` / `implement` / `delegate` |
+
+**Selectable aspects:**
+1. **Implementation quality** — logic, error handling, async patterns, edge cases
+2. **Clean code** — naming, readability, DRY, SOLID, complexity
+3. **Design patterns** — architectural alignment, coupling, separation of concerns
+4. **Test coverage** — coverage gaps, test quality, brittleness
+
+**Depth behaviour:**
+- `quick` (<5 files) — Claude reads and analyzes directly, no sub-agents
+- `standard` (5–20 files) — Codex dispatched per aspect
+- `deep` (>20 files) — Codex dispatched per chunk per aspect
+
+**Output:** Severity-bucketed report (🔴 Critical · 🟠 High · 🟡 Mid · 🟢 Low) with named strengths, systemic patterns, and actionable recommendations. Saved to `~/.flywheel/projects/<project>/reflect/<session>/`.
 
 ---
 
@@ -445,7 +483,8 @@ flywheel-plugin/
 │       ├── fw-tdd-specialist.md    # sonnet — TDD cycles
 │       ├── fw-test-generator.md    # sonnet — coverage generation
 │       ├── fw-migration-engineer.md # sonnet — migration planning
-│       └── fw-fe-designer.md       # sonnet — frontend UI & design
+│       ├── fw-fe-designer.md       # sonnet — frontend UI & design
+│       └── fw-reflector.md         # sonnet — quality reflection & synthesis
 ├── commands/
 │   ├── design.md       # Research-driven design workflow (6 phases)
 │   ├── fe-design.md    # Frontend build workflow — code output (4 phases)
@@ -459,6 +498,7 @@ flywheel-plugin/
 │   ├── test.md         # Test generation (5 phases)
 │   ├── tdd.md          # Test-driven development (6 phases)
 │   ├── cleanup.md      # Session cache management
+│   ├── reflect.md      # Multi-dimensional quality reflection (5 phases)
 │   └── setup.md        # Provider setup + persona installation
 ├── scripts/
 │   ├── dispatch.sh             # Multi-provider executor
@@ -489,7 +529,8 @@ flywheel-plugin/
         ├── migrate/                # /fw:migrate sessions
         ├── harden/                 # /fw:harden sessions
         ├── test/                   # /fw:test sessions
-        └── tdd/                    # /fw:tdd sessions
+        ├── tdd/                    # /fw:tdd sessions
+        └── reflect/                # /fw:reflect sessions
 ```
 
 > Project name is auto-detected from `git rev-parse --show-toplevel`. Override with `FLYWHEEL_PROJECT` env var.
