@@ -57,11 +57,74 @@ Save `$SESSION_DIR/00-session.md` with:
 
 ---
 
+## Team Configuration
+
+> **Mode**: `team` when agent teams enabled AND scope is `module` or `project`; `sequential` for `file` scope
+> **Template**: `parallel-scan` (from config/team-templates.yaml)
+> **Minimum scope**: `module` — skip teams for single-file scans
+> **Detection**: `scripts/team-detect.sh`
+
+| Role | Persona | Task | Parallel With |
+|------|---------|------|---------------|
+| owasp-scanner | fw-security-auditor | OWASP Top 10 + code vulnerabilities | dependency-auditor, secrets-detector |
+| dependency-auditor | fw-security-auditor | CVE checks on dependencies | owasp-scanner, secrets-detector |
+| secrets-detector | fw-security-auditor | Credentials and secrets scanning | owasp-scanner, dependency-auditor |
+
+All three run simultaneously. Lead merges and prioritizes findings in Phase 5.
+
+---
+
 ## Phase 1: Static Analysis — Code Vulnerabilities 🔍
 
 > *`fw-security-auditor` persona performs OWASP Top 10 + language-specific vulnerability scan*
 
 **Goal:** Find vulnerabilities in the source code itself — injection, auth flaws, misconfigurations.
+
+**Detect agent teams availability** (for module/project scope):
+```bash
+"${CLAUDE_PLUGIN_ROOT}/scripts/team-detect.sh" 2>&1
+```
+Set `TEAM_MODE=true` if available and scope is `module` or `project`.
+
+**[TEAM MODE — all three scan types run in parallel]**
+
+If `TEAM_MODE=true`:
+```
+Create an agent team for this security audit.
+
+Spawn three scanning teammates simultaneously:
+
+Teammate 1 — 'owasp-scanner':
+PERSONA IDENTITY: <contents of agents/personas/fw-security-auditor.md>
+TASK: Perform OWASP Top 10 vulnerability scan + language-specific code audit.
+Focus: injection, broken auth, XSS, IDOR, security misconfig, XXE, deserialization, known CVEs in code.
+For each finding: OWASP category, file:line, evidence, attack scenario, proposed patch.
+SCOPE: <SCOPE_DESCRIPTION> | STACK: <DETECTED_STACK>
+SEQUENTIAL ANALYSIS: <summary, or omit if skipped>
+Save to: <SESSION_DIR>/01-code-audit.md
+
+Teammate 2 — 'dependency-auditor':
+PERSONA IDENTITY: <contents of agents/personas/fw-security-auditor.md>
+TASK: Audit all project dependencies for known CVEs.
+Check: package.json/requirements.txt/Cargo.toml/go.mod for vulnerable versions.
+For each CVE: package, version, CVE ID, severity (CRITICAL/HIGH/MEDIUM/LOW), fixed version.
+Save to: <SESSION_DIR>/02-dependency-audit.md
+
+Teammate 3 — 'secrets-detector':
+PERSONA IDENTITY: <contents of agents/personas/fw-security-auditor.md>
+TASK: Scan for hardcoded credentials, API keys, tokens, and secrets.
+Check: source files, config files, .env files, test fixtures.
+For each finding: file:line, type of secret, risk level, remediation.
+Save to: <SESSION_DIR>/03-secrets-audit.md
+
+FILES IN SCOPE: <file list>
+```
+
+All three teammates work simultaneously. Lead waits for all to complete, then proceeds directly to Phase 5 (merge findings). Phases 2, 3, 4 still run sequentially after the team completes.
+
+---
+
+**[SEQUENTIAL MODE — fallback when agent teams disabled or scope is file]**
 
 **Sequential Thinking** (skip for `file` scope; activate for `module`, `project`, and `branch` scope):
 
@@ -93,6 +156,10 @@ SEQUENTIAL ANALYSIS:
 ```
 
 Save output to `$SESSION_DIR/01-code-audit.md`.
+
+---
+
+*(End of sequential mode fallback for Phase 1)*
 
 **Fallback — if fw-security-auditor persona not installed, run Codex:**
 ```bash

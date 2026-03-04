@@ -1,0 +1,127 @@
+# Flywheel Agent Team Templates
+# Reusable team composition templates for multi-agent parallel workflows.
+#
+# Each template defines roles, persona mappings, model preferences, and
+# dependency ordering. Commands reference these by name to declare their
+# team structure.
+#
+# Usage in command .md files:
+#   > **Template**: `research-and-plan` (from config/team-templates.yaml)
+#
+# Fields:
+#   description     — human-readable purpose
+#   min_complexity  — skip teams below this scope (standard | deep | large)
+#   dynamic         — true if roles are generated from runtime input
+#   roles           — map of role-name → role config
+#     persona       — fw-* persona name (null = no persona injection)
+#     provider      — dispatch.sh provider (codex | gemini) if non-Claude
+#     model         — sonnet | opus | haiku | inherit
+#     worktree      — true = run in isolated git worktree
+#     task_type     — research | analysis | review | scan | implementation | testing
+#     depends_on    — list of role names that must complete first
+
+templates:
+
+  # ── Research + Planning ────────────────────────────────────────────────────
+  # Used by: fw:implement (Phases 1b + 2), fw:design (Phases 1 + 2)
+  research-and-plan:
+    description: "Parallel ecosystem research + technical planning"
+    min_complexity: standard
+    roles:
+      researcher:
+        persona: fw-researcher
+        model: sonnet
+        worktree: false
+        task_type: research
+        depends_on: []
+      architect:
+        persona: fw-architect
+        model: opus
+        worktree: false
+        task_type: analysis
+        depends_on: [researcher]   # Architect waits for researcher findings
+
+  # ── Parallel Code Review ───────────────────────────────────────────────────
+  # Used by: fw:review (Step 5, CRITICAL level)
+  parallel-review:
+    description: "Multi-lens code review — security, quality, and test coverage simultaneously"
+    min_complexity: standard
+    roles:
+      security-reviewer:
+        persona: fw-security-auditor
+        model: opus
+        worktree: false
+        task_type: review
+        depends_on: []
+      quality-reviewer:
+        persona: fw-code-reviewer
+        model: sonnet
+        worktree: false
+        task_type: review
+        depends_on: []
+      test-reviewer:
+        persona: fw-test-generator
+        model: sonnet
+        worktree: false
+        task_type: review
+        depends_on: []
+
+  # ── Parallel Aspect Analysis ───────────────────────────────────────────────
+  # Used by: fw:reflect (Phase 2)
+  # Dynamic: roles are generated from the user's selected aspects at runtime.
+  # Each aspect becomes one teammate using the role_template below.
+  parallel-analysis:
+    description: "Multi-aspect quality analysis — one teammate per selected aspect"
+    min_complexity: standard
+    dynamic: true
+    max_roles: 4
+    role_template:
+      persona: fw-reflector
+      model: sonnet
+      worktree: false
+      task_type: analysis
+      depends_on: []
+
+  # ── Parallel Security Scanning ─────────────────────────────────────────────
+  # Used by: fw:harden (Phase 1)
+  parallel-scan:
+    description: "Parallel security scanning — OWASP, CVE, and secrets simultaneously"
+    min_complexity: standard
+    roles:
+      owasp-scanner:
+        persona: fw-security-auditor
+        model: opus
+        worktree: false
+        task_type: scan
+        depends_on: []
+      dependency-auditor:
+        persona: fw-security-auditor
+        model: sonnet
+        worktree: false
+        task_type: scan
+        depends_on: []
+      secrets-detector:
+        persona: fw-security-auditor
+        model: sonnet
+        worktree: false
+        task_type: scan
+        depends_on: []
+
+  # ── Parallel Migration Research ────────────────────────────────────────────
+  # Used by: fw:migrate (Phase 1b — research + codebase analysis in parallel)
+  parallel-migration-research:
+    description: "Parallel migration research — breaking changes research + codebase impact analysis"
+    min_complexity: minor
+    roles:
+      framework-researcher:
+        persona: fw-researcher
+        model: sonnet
+        worktree: false
+        task_type: research
+        depends_on: []
+      codebase-analyzer:
+        persona: fw-migration-engineer
+        model: sonnet
+        worktree: false
+        task_type: analysis
+        depends_on: []

@@ -46,9 +46,25 @@ Save `$SESSION_DIR/00-session.md` with:
 
 ---
 
+## Team Configuration
+
+> **Mode**: `team` when agent teams enabled AND scope is `minor` or `major`; `sequential` for `patch`
+> **Template**: `parallel-migration-research` (from config/team-templates.yaml)
+> **Minimum scope**: `minor` — skip teams for patch-level bumps
+> **Detection**: `scripts/team-detect.sh`
+
+| Role | Persona | Task | Parallel With |
+|------|---------|------|---------------|
+| framework-researcher | fw-researcher | Official migration guide + breaking changes research | codebase-analyzer |
+| codebase-analyzer | fw-migration-engineer | Codebase impact analysis (affected files + patterns) | framework-researcher |
+
+Both run simultaneously. Lead synthesizes before Phase 2 planning.
+
+---
+
 ## Phase 1: Research Breaking Changes 🌐
 
-> *Gemini gathers ecosystem knowledge about the migration target*
+> *Research and codebase inventory — parallel in team mode, sequential otherwise*
 > **Skipped for `patch` scope**
 
 **Goal:** Understand what's changing, what breaks, and what the official migration path is.
@@ -64,7 +80,62 @@ You (Claude) scan the current project for:
 
 Summarise findings in `$SESSION_DIR/01-inventory.md`.
 
+**Detect agent teams availability** (for minor + major scope):
+```bash
+"${CLAUDE_PLUGIN_ROOT}/scripts/team-detect.sh" 2>&1
+```
+Set `TEAM_MODE=true` if available and scope is `minor` or `major`.
+
 ### 1b — Ecosystem Research (minor + major only)
+
+**[TEAM MODE — framework-researcher + codebase-analyzer run in parallel with Phase 1a]**
+
+If `TEAM_MODE=true`:
+```
+Create an agent team for this migration session.
+
+Spawn two research teammates simultaneously (alongside Phase 1a codebase inventory):
+
+Teammate 1 — 'framework-researcher':
+PERSONA IDENTITY: <contents of agents/personas/fw-researcher.md>
+MIGRATION TARGET: <MIGRATION_DESCRIPTION>
+
+TASK:
+Research the migration path. Use Context7 first for the target technology.
+
+Gather:
+1. Official migration guide — step-by-step from maintainers
+2. Breaking changes — every API, behaviour, or config change
+3. Deprecated features — what's removed and what replaces it
+4. Known pitfalls — community-reported gotchas and workarounds
+5. Codemods or automated tooling available
+6. Dependency compatibility — peer dep version requirements
+
+Save to: <SESSION_DIR>/01-research.md
+
+Teammate 2 — 'codebase-analyzer':
+PERSONA IDENTITY: <contents of agents/personas/fw-migration-engineer.md>
+MIGRATION TARGET: <MIGRATION_DESCRIPTION>
+
+TASK:
+Analyze the codebase for migration impact.
+
+Scan for:
+- Current versions of the migration target
+- All imports and usage patterns (grep for relevant terms)
+- Configuration files that reference the target
+- Test files covering affected areas
+- Count of affected files and estimated blast radius
+
+Save to: <SESSION_DIR>/01-inventory.md
+```
+
+Wait for both teammates and Phase 1a to complete. Lead synthesizes all findings before Phase 2.
+Cleanup at end of session: `"Clean up the team. Shut down all teammates first."`
+
+---
+
+**[SEQUENTIAL MODE — fallback when agent teams disabled or scope is patch]**
 
 **Context7 pre-enrichment** — before dispatching to Gemini, gather official migration documentation:
 
@@ -95,6 +166,10 @@ Be specific. Include version numbers, API names, and concrete examples."
 ```
 
 Save output to `$SESSION_DIR/01-research.md`.
+
+---
+
+*(End of sequential mode fallback for Phase 1b)*
 
 ### Phase 1 Summary
 

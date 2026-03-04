@@ -10,6 +10,24 @@ This command runs a structured 5-phase quality reflection over any user-defined 
 
 ---
 
+## Team Configuration
+
+> **Mode**: `team` when agent teams enabled AND depth is `standard` or `deep`; `sequential` for `quick` depth
+> **Template**: `parallel-analysis` (dynamic — from config/team-templates.yaml)
+> **Minimum depth**: `standard` — skip teams for single-file/quick analysis
+> **Detection**: `scripts/team-detect.sh`
+
+| Role (dynamic) | Persona | Task | Parallel With |
+|----------------|---------|------|---------------|
+| aspect-1 | fw-reflector | Aspect 1 analysis | All other aspects |
+| aspect-2 | fw-reflector | Aspect 2 analysis | All other aspects |
+| aspect-3 | fw-reflector | Aspect 3 analysis | All other aspects |
+| aspect-4 | fw-reflector | Aspect 4 analysis | All other aspects |
+
+One teammate per selected aspect (up to 4). All run simultaneously. Lead synthesizes findings using fw-reflector identity.
+
+---
+
 ## Step 0: Parse Input & Configure
 
 Parse the user's input:
@@ -109,9 +127,47 @@ Print:
 
 ## Phase 2: Analysis 🔍
 
-> *Per-aspect analysis passes, dispatched at the appropriate depth*
+> *Per-aspect analysis passes — parallel teammates in team mode, sequential dispatch in fallback*
 
 **Goal:** Run each selected aspect as a focused analysis pass over the files in scope. Collect raw findings with evidence.
+
+**[TEAM MODE — one teammate per aspect | all run simultaneously]**
+
+If `TEAM_MODE=true` and depth is `standard` or `deep`:
+
+Detect agent teams:
+```bash
+"${CLAUDE_PLUGIN_ROOT}/scripts/team-detect.sh" 2>&1
+```
+
+If available, create a team and spawn one teammate per selected aspect:
+```
+Create an agent team for this reflection session.
+
+For each selected aspect, spawn a teammate named 'aspect-<N>' with the following context:
+
+PERSONA IDENTITY:
+<contents of agents/personas/fw-reflector.md>
+
+FILES IN SCOPE:
+<file list from SESSION_DIR/01-scope.md>
+
+TASK: <ASPECT_PROMPT for this aspect — see Aspect Prompts section below>
+
+DELIVERABLE:
+Save raw findings to: <SESSION_DIR>/02-analysis-aspect-<N>.md
+Format: for each finding: issue, location (file:line), severity (critical/high/mid/low), suggestion
+Include 2-3 specific strengths you observe.
+Mark your task complete when done.
+```
+
+All aspect teammates run simultaneously. Lead waits for all to complete, then reads all finding files and proceeds to Phase 3.
+
+Cleanup after Phase 5: `"Clean up the team. Shut down all teammates first."`
+
+---
+
+**[SEQUENTIAL MODE — fallback when agent teams disabled or depth is quick]**
 
 ### Aspect Prompts
 

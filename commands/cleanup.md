@@ -87,6 +87,7 @@ Parse the user's input after `/fw:cleanup`:
 | `older <duration>` | Clear sessions older than duration (e.g., `older 7d`, `older 1m`, `older 2w`) |
 | `results` | Clear only dispatch result files (the `results/` directory) |
 | `migrate-legacy` | Move legacy flat sessions into the current project directory |
+| `teams` | List and clean up stale agent team configs from `~/.claude/teams/` |
 
 **Duration parsing:**
 - `Nd` = N days (e.g., `7d` = 7 days)
@@ -165,6 +166,29 @@ for cmd in implement debug migrate harden test tdd results; do
 done
 ```
 
+**Clean up stale agent teams** (`teams` target):
+```bash
+# List all team configs
+TEAMS_DIR="$HOME/.claude/teams"
+if [[ -d "$TEAMS_DIR" ]]; then
+    echo "🤝 Agent team configs found:"
+    ls -la "$TEAMS_DIR"/ 2>/dev/null || echo "  (none)"
+
+    # Check for orphaned tmux sessions from agent teams
+    if command -v tmux &>/dev/null; then
+        echo ""
+        echo "Active tmux sessions (may include agent team sessions):"
+        tmux ls 2>/dev/null || echo "  (no tmux sessions)"
+    fi
+
+    # Offer to remove stale team configs
+    echo ""
+    echo "Remove all team configs from $TEAMS_DIR? [confirm / cancel]"
+    # On confirm:
+    # rm -rf "$TEAMS_DIR"/*
+fi
+```
+
 ---
 
 ## Step 4: Report
@@ -219,6 +243,9 @@ If everything was cleaned:
 
 # Move legacy flat sessions into current project
 /fw:cleanup migrate-legacy
+
+# Clean up stale agent team configs
+/fw:cleanup teams
 
 # Nuclear option — clear everything
 /fw:cleanup all

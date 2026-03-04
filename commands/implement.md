@@ -12,6 +12,29 @@ This command runs a structured 9-phase workflow to implement a feature end-to-en
 
 ---
 
+## Team Configuration
+
+> **Mode**: `team` when agent teams enabled; `sequential` fallback (identical behavior)
+> **Template**: `research-and-plan` (from config/team-templates.yaml)
+> **Minimum scope**: `medium` — skip teams for `small` scope
+> **Detection**: `scripts/team-detect.sh`
+
+| Role | Persona | Phase(s) | Task | Parallel With |
+|------|---------|----------|------|---------------|
+| researcher | fw-researcher | 1b | Ecosystem research | Phase 1a (lead) |
+| architect | fw-architect | 2 | Technical planning | — (after 1a+1b) |
+| test-writer | fw-test-generator | 8 | Test writing | Phase 7 (codex) |
+
+### Parallel Phase Groups
+
+| Group | Phases | Members | Prerequisite |
+|-------|--------|---------|-------------|
+| A | 1a + 1b | lead + researcher | None |
+| B | 2 | architect | Group A complete |
+| C | 7 + 8 | lead (codex) + test-writer | Phase 5 user approval |
+
+---
+
 ## Step 0: Parse Input & Detect Scope
 
 Parse the user's input:
@@ -31,6 +54,12 @@ Show the detected scope:
 🎯 Feature: <description>
 📐 Scope detected: MEDIUM — running full workflow
 ```
+
+**Detect agent teams availability** (for medium + large scope):
+```bash
+"${CLAUDE_PLUGIN_ROOT}/scripts/team-detect.sh" 2>&1
+```
+Set `TEAM_MODE=true` if exit code is 0, `TEAM_MODE=false` otherwise. Display the result line to the user.
 
 **Create session directory (per-project isolation):**
 ```bash
@@ -65,6 +94,50 @@ You (Claude) scan the current project for:
 Summarise findings in `$SESSION_DIR/01-research-codebase.md`.
 
 ### 1b — Ecosystem Research (medium + large only)
+
+**[TEAM MODE — researcher teammate | runs in parallel with Phase 1a]**
+
+If `TEAM_MODE=true` and scope is `medium` or `large`:
+
+Create a team and spawn a researcher teammate:
+```
+Create an agent team for this implementation session.
+
+Spawn a teammate named 'researcher' with the following context:
+
+PERSONA IDENTITY:
+<contents of agents/personas/fw-researcher.md>
+
+PROJECT CONTEXT:
+- Feature: <FEATURE_DESCRIPTION>
+- Detected technologies: <from Phase 1a codebase scan>
+- Session directory: <SESSION_DIR>
+
+TASK:
+Research best practices, libraries, and patterns for: <FEATURE_DESCRIPTION>.
+
+IMPORTANT: Use Context7 MCP tools first for each detected technology (max 3).
+Query template: "Best practices and API reference for implementing <FEATURE> with <library>"
+
+Include:
+1. Official documentation findings (Context7) — version-specific APIs and patterns
+2. Recommended libraries/frameworks — rate each as ✅/⚠️/❌ with maintenance status
+3. Common implementation patterns — with concrete examples
+4. Known pitfalls and edge cases — specific and cited
+5. Security considerations — mandatory, not optional
+6. Performance implications — measurable characteristics
+
+DELIVERABLE:
+Save findings to: <SESSION_DIR>/01-research-ecosystem.md
+Mark your task complete when done and notify the lead.
+```
+
+Lead continues Phase 1a codebase scan in parallel.
+Wait for researcher teammate to complete, then proceed to Phase 2.
+
+---
+
+**[SEQUENTIAL MODE — fallback when agent teams disabled]**
 
 **Primary path — invoke `fw-researcher` persona:**
 ```
@@ -106,6 +179,10 @@ Research best practices, libraries, and patterns for: <FEATURE_DESCRIPTION>. Foc
 
 Save output to `$SESSION_DIR/01-research-ecosystem.md`.
 
+---
+
+*(End of sequential mode fallback for Phase 1b)*
+
 ### Phase 1 Summary
 
 Print a brief summary:
@@ -139,6 +216,52 @@ mcp__sequential-thinking__sequentialthinking({
 Continue until `nextThoughtNeeded: false` or 8 thoughts reached. When complete, write a **Sequential Analysis Summary** (2-4 sentences) and include it in the architect prompt below as `SEQUENTIAL ANALYSIS: <summary>`.
 
 If `mcp__sequential-thinking__sequentialthinking` is unavailable, skip this block silently.
+
+**[TEAM MODE — architect teammate | runs after researcher completes]**
+
+If `TEAM_MODE=true` and scope is `medium` or `large`:
+
+Spawn an architect teammate (require plan approval):
+```
+Spawn a teammate named 'architect'. Require plan approval before they make any changes.
+
+PERSONA IDENTITY:
+<contents of agents/personas/fw-architect.md>
+
+PROJECT CONTEXT:
+- Feature: <FEATURE_DESCRIPTION>
+- Session directory: <SESSION_DIR>
+
+SEQUENTIAL ANALYSIS:
+<summary from sequential thinking block, or omit if skipped>
+
+CODEBASE CONTEXT:
+<contents of SESSION_DIR/01-research-codebase.md>
+
+ECOSYSTEM RESEARCH:
+<contents of SESSION_DIR/01-research-ecosystem.md>
+
+TASK:
+Produce a technical implementation plan. Include:
+- Approach analysis table (2-3 options) + recommended choice with rationale
+- Architecture Decision Record (ADR)
+- File impact map (CREATE/MODIFY/DELETE with purpose)
+- Risk register
+- Integration checklist
+- Effort estimate (honest — do not under-estimate)
+
+DELIVERABLE:
+Save output to: <SESSION_DIR>/02-plan.md
+```
+
+Lead reviews the architect's plan (plan approval mode):
+- If plan looks sound → approve it
+- If plan needs revision → reject with specific feedback, architect revises
+- When approved → proceed to Phase 3
+
+---
+
+**[SEQUENTIAL MODE — fallback when agent teams disabled]**
 
 **Primary path — invoke `fw-architect` persona:**
 ```
@@ -189,6 +312,10 @@ Be specific to this codebase, not generic."
 ```
 
 Save output to `$SESSION_DIR/02-plan.md`.
+
+---
+
+*(End of sequential mode fallback for Phase 2)*
 
 Print:
 ```
@@ -358,6 +485,41 @@ Print:
 
 **Goal:** Write and validate tests for the implementation.
 
+**[TEAM MODE — test-writer teammate | runs in parallel with Phase 7]**
+
+If `TEAM_MODE=true` and a team is active:
+
+While Phase 7 implementation is running via dispatch.sh (codex), also instruct the team:
+```
+Spawn a teammate named 'test-writer' to begin test scaffolding in parallel.
+
+PERSONA IDENTITY:
+<contents of agents/personas/fw-test-generator.md>
+
+PROJECT CONTEXT:
+- Session directory: <SESSION_DIR>
+
+TASK:
+Begin writing test scaffolding based on the approved proposal and acceptance criteria.
+Once the implementation (Phase 7) is marked complete, write full tests against the actual code.
+
+PROPOSAL:
+<contents of SESSION_DIR/04-proposal.md>
+
+ACCEPTANCE CRITERIA:
+<acceptance criteria from proposal>
+
+DELIVERABLE:
+Save test output to: <SESSION_DIR>/08-testing.md
+Mark your task complete when done.
+```
+
+Lead synthesizes both the implementation result (Phase 7) and test-writer output for Phase 9.
+
+---
+
+**[SEQUENTIAL MODE — fallback (or when running after Phase 7 in team mode)]**
+
 ### 8a — Codex writes tests
 
 ```bash
@@ -436,6 +598,11 @@ All phase outputs saved to: <SESSION_DIR>
 ```
 
 Save to `$SESSION_DIR/09-return.md`.
+
+**[TEAM MODE cleanup]** If a team was active during this session:
+```
+Clean up the team. Shut down all remaining teammates first, then clean up shared team resources.
+```
 
 ---
 

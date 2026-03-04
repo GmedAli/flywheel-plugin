@@ -12,6 +12,27 @@ This command runs a structured 6-phase research and design workflow. It produces
 
 ---
 
+## Team Configuration
+
+> **Mode**: `team` when agent teams enabled; `sequential` fallback (identical behavior)
+> **Template**: `research-and-plan` (from config/team-templates.yaml)
+> **Minimum complexity**: `standard` — skip teams for `light` complexity
+> **Detection**: `scripts/team-detect.sh`
+
+| Role | Persona | Phase(s) | Task | Parallel With |
+|------|---------|----------|------|---------------|
+| researcher | fw-researcher | 2 | Ecosystem research | Phase 1 (lead) |
+| architect | fw-architect | 3 | Deep analysis | After Phases 1+2 |
+
+### Parallel Phase Groups
+
+| Group | Phases | Members | Prerequisite |
+|-------|--------|---------|-------------|
+| A | 1 + 2 | lead + researcher | None |
+| B | 3 | architect | Group A complete |
+
+---
+
 ## Step 0: Parse Input & Classify Complexity
 
 Parse the user's input:
@@ -39,6 +60,12 @@ Show the classification:
 📐 Design Brief: <description>
 🧭 Complexity: STANDARD — running full design workflow
 ```
+
+**Detect agent teams availability** (for standard + deep complexity):
+```bash
+"${CLAUDE_PLUGIN_ROOT}/scripts/team-detect.sh" 2>&1
+```
+Set `TEAM_MODE=true` if exit code is 0, `TEAM_MODE=false` otherwise. Display the result line.
 
 **Create session directory (per-project isolation):**
 ```bash
@@ -90,6 +117,46 @@ Print:
 
 **Goal:** Gather external knowledge — best practices, existing solutions, packages, pitfalls.
 
+**[TEAM MODE — researcher teammate | runs in parallel with Phase 1]**
+
+If `TEAM_MODE=true` and complexity is `standard` or `deep`:
+
+Create a team (if not already created) and spawn researcher teammate simultaneously with Phase 1:
+```
+Create an agent team for this design session.
+
+Spawn a teammate named 'researcher' with the following context:
+
+PERSONA IDENTITY:
+<contents of agents/personas/fw-researcher.md>
+
+PROJECT CONTEXT:
+- Design goal: <DESIGN_BRIEF>
+- Session directory: <SESSION_DIR>
+
+TASK:
+Research best practices and existing solutions for the design goal.
+Use Context7 MCP tools first for relevant technologies (max 3).
+
+Gather:
+1. Recommended packages/libraries — with maintenance status and trade-offs
+2. Established implementation patterns for this type of feature
+3. Known pitfalls, gotchas, and common mistakes
+4. Security considerations specific to this feature
+5. Performance implications and scalability concerns
+
+DELIVERABLE:
+Save findings to: <SESSION_DIR>/02-ecosystem-research.md
+Mark your task complete when done and notify the lead.
+```
+
+Lead runs Phase 1 codebase analysis simultaneously.
+Wait for both Phase 1 and researcher to complete before proceeding to Phase 3.
+
+---
+
+**[SEQUENTIAL MODE — fallback when agent teams disabled]**
+
 **Context7 pre-enrichment** — before dispatching to Gemini, gather official documentation:
 
 1. Identify technologies relevant to the design brief from Phase 1 findings (max 3)
@@ -124,6 +191,10 @@ Prioritise solutions that fit the existing stack. Flag anything that would requi
 
 Save output to `$SESSION_DIR/02-ecosystem-research.md`.
 
+---
+
+*(End of sequential mode fallback for Phase 2)*
+
 Print:
 ```
 ✅ Phase 2 Complete — Ecosystem Research
@@ -135,14 +206,14 @@ Print:
 
 ## Phase 3: Deep Analysis 🧠
 
-> *Codex performs structured architectural analysis*
+> *Architect performs structured architectural analysis*
 > **Skipped for `light` complexity**
 
 **Goal:** Evaluate approaches, weigh trade-offs, and identify the best path forward.
 
 **Sequential Thinking** (activate for `standard` and `deep` complexity; already skipped for `light` since Phase 3 is skipped entirely):
 
-Before dispatching to Codex, use structured reasoning to map the design space:
+Before dispatching, use structured reasoning to map the design space:
 
 ```
 mcp__sequential-thinking__sequentialthinking({
@@ -153,9 +224,51 @@ mcp__sequential-thinking__sequentialthinking({
 })
 ```
 
-Continue until `nextThoughtNeeded: false` or 8 thoughts reached. Branch when two viable approaches warrant separate exploration. When complete, write a **Sequential Analysis Summary** (2-4 sentences) and prepend it to the Codex prompt below as `SEQUENTIAL ANALYSIS: <summary>`.
+Continue until `nextThoughtNeeded: false` or 8 thoughts reached. Branch when two viable approaches warrant separate exploration. When complete, write a **Sequential Analysis Summary** (2-4 sentences) and use it in the architect spawn prompt below as `SEQUENTIAL ANALYSIS: <summary>`.
 
 If `mcp__sequential-thinking__sequentialthinking` is unavailable, skip this block silently.
+
+**[TEAM MODE — architect teammate | runs after Phases 1+2 complete]**
+
+If `TEAM_MODE=true` and complexity is `standard` or `deep`:
+
+```
+Spawn a teammate named 'architect'. Require plan approval.
+
+PERSONA IDENTITY:
+<contents of agents/personas/fw-architect.md>
+
+SEQUENTIAL ANALYSIS:
+<summary from sequential thinking block above, or omit if skipped>
+
+DESIGN GOAL: <DESIGN_BRIEF>
+
+CODEBASE CONTEXT:
+<contents of SESSION_DIR/01-codebase-analysis.md>
+
+ECOSYSTEM RESEARCH:
+<contents of SESSION_DIR/02-ecosystem-research.md>
+
+TASK:
+Analyse the design problem and evaluate implementation approaches. Do NOT write any code.
+
+Produce:
+1. Approach Options — 2-3 viable approaches with pros, cons, effort, risk
+2. Recommended Approach — specific to this codebase, not generic
+3. Architecture Decisions — key decisions with recommendations
+4. Dependency Assessment — new deps needed, with justification
+5. Risk Analysis — what could go wrong, rollback strategy
+6. Open Questions — anything needing user input
+
+DELIVERABLE:
+Save output to: <SESSION_DIR>/03-deep-analysis.md
+```
+
+Lead reviews and approves the architect's analysis before proceeding.
+
+---
+
+**[SEQUENTIAL MODE — fallback when agent teams disabled]**
 
 Run Codex:
 ```bash
@@ -182,6 +295,10 @@ Produce:
 
 Be specific to this codebase. Reference actual file names, functions, and patterns you see in the context." <RELEVANT_FILES_FROM_PHASE_1>
 ```
+
+---
+
+*(End of sequential mode fallback for Phase 3)*
 
 Save output to `$SESSION_DIR/03-deep-analysis.md`.
 
@@ -396,13 +513,18 @@ Ask the user:
 - **deeper** → Ask which area to investigate further. Run a targeted Phase 2 or 3 for that area, then update the plan. Repeat Phase 6.
 - **implement** → Auto-populate `/fw:implement` with the design brief and reference the plan: "Implement the feature described in DESIGN-PLAN.md. Follow the task breakdown in Section 4."
 
+**[TEAM MODE cleanup]** After any exit from Phase 6, if a team was active:
+```
+Clean up the team. Shut down all remaining teammates first, then clean up shared team resources.
+```
+
 ---
 
 ## Error Handling
 
 - **Phase fails** (dispatch.sh exits non-zero): Show the error, offer to retry or skip the phase
-- **Codex not available**: Fall back to Claude for Phase 3 with a note that analysis depth may be reduced
-- **Gemini not available**: Skip Phase 2, rely on Claude's knowledge + codebase analysis only. Note the gap.
+- **Architect not available** (team mode): Fall back to Codex via dispatch.sh for Phase 3 with a note
+- **Gemini not available** (sequential mode): Skip Phase 2, rely on Claude's knowledge + codebase analysis only. Note the gap.
 - **User cancels at any phase**: Save session state and print the session directory path
 - **DESIGN-PLAN.md already exists**: Ask whether to overwrite, rename (append timestamp), or cancel
 

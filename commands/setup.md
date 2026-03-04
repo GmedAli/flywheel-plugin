@@ -85,7 +85,66 @@ This command validates all AI provider integrations and configures the plugin fo
     "${CLAUDE_PLUGIN_ROOT}/scripts/install-personas.sh" --force
     ```
 
-## Step 2.5: MCP Server Detection
+## Step 2.5: Agent Teams Configuration (Optional)
+
+> Agent teams enable parallel teammate execution in complex commands (`/fw:implement`, `/fw:review`, `/fw:harden`, etc.). This is an **experimental** Claude Code feature — token usage scales with team size.
+
+1. **Check current status:**
+   ```bash
+   "${CLAUDE_PLUGIN_ROOT}/scripts/team-detect.sh" 2>&1
+   ```
+
+2. **If not already enabled**, ask the user:
+   ```
+   🤝 Would you like to enable experimental agent teams for parallel workflows?
+
+   This allows /fw:implement, /fw:review, /fw:reflect, /fw:harden, and /fw:migrate
+   to spawn parallel teammates for independent phases — reducing execution time
+   for complex tasks.
+
+   ⚠️  Experimental: CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS feature flag
+   ⚠️  Higher token cost: each teammate is a separate Claude instance
+   ⚠️  Known limits: no session resumption for in-process teammates, one team per session
+
+   Enable agent teams? [yes / no / skip]
+   ```
+
+3. **If yes** — patch `~/.claude/settings.json` to add the feature flag:
+   ```bash
+   # Using jq (preferred):
+   jq '.env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS = "1"' ~/.claude/settings.json > /tmp/settings-tmp.json \
+     && mv /tmp/settings-tmp.json ~/.claude/settings.json
+
+   # If jq not available, use python3:
+   python3 -c "
+   import json, sys
+   with open(os.path.expanduser('~/.claude/settings.json')) as f:
+       s = json.load(f)
+   s.setdefault('env', {})['CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS'] = '1'
+   with open(os.path.expanduser('~/.claude/settings.json'), 'w') as f:
+       json.dump(s, f, indent=2)
+   "
+   ```
+
+4. **Verify** the setting took effect:
+   ```bash
+   "${CLAUDE_PLUGIN_ROOT}/scripts/team-detect.sh"
+   ```
+
+5. **Display result:**
+   ```
+   ✅ Agent Teams enabled — parallel workflows active
+      To disable: set FLYWHEEL_DISABLE_TEAMS=1 or remove the flag from settings.json
+      Commands that use teams: /fw:implement, /fw:design, /fw:review, /fw:reflect, /fw:harden, /fw:migrate
+   ```
+   Or if user skipped:
+   ```
+   ⏭️  Agent Teams skipped — run /fw:setup again to enable later
+   ```
+
+---
+
+## Step 2.7: MCP Server Detection
 
 Flywheel skills depend on optional MCP servers. Check availability and guide installation for any that are missing.
 
@@ -118,7 +177,7 @@ Both skills degrade gracefully — missing MCP servers do not break any command.
 
 ---
 
-## Step 3: Detect Providers
+## Step 3: Detect Providers (was Step 3, renumbered)
 
 1.  **Run provider detection** (force fresh check, ignore cache):
     ```bash
@@ -132,7 +191,7 @@ Both skills degrade gracefully — missing MCP servers do not break any command.
     *   **Codex not authenticated**: Suggest `codex login` for OAuth or setting `OPENAI_API_KEY`
     *   **All good**: "Providers ready!"
 
-## Step 4: Verify Configuration
+## Step 4: Verify Configuration (was Step 4, renumbered)
 
 1.  Check that `~/.flywheel/agents.yaml` has at least one agent matching an available provider.
 2.  Display available commands:

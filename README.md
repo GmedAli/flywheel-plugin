@@ -1,8 +1,8 @@
 # Flywheel Plugin for Claude Code
 
-> **Multi-provider AI orchestration plugin** — Let Claude orchestrate specialized agents (Codex, Gemini) across structured workflows
+> **Multi-provider AI orchestration plugin** — Let Claude orchestrate specialized agents (Codex, Gemini, Claude teammates) across structured workflows
 
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/yourusername/flywheel-plugin)
+[![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)](https://github.com/yourusername/flywheel-plugin)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 ---
@@ -16,15 +16,28 @@ Flywheel transforms Claude into an **orchestrator** that spawns specialized AI a
 ```mermaid
 flowchart LR
     You["👤 You"] -->|"/fw:implement build auth"| Claude["🔵 Claude\nOrchestrator"]
-    Claude -->|"research"| Gemini["🟡 Gemini\nEcosystem Research"]
-    Claude -->|"plan + code"| Codex["🔴 Codex\nArchitect + Builder"]
-    Codex -->|"output"| Claude
-    Gemini -->|"output"| Claude
+
+    subgraph TeamMode["🤝 Team Mode (parallel)"]
+        Researcher["🔵 researcher\nfw-researcher"]
+        Architect["🔵 architect\nfw-architect"]
+    end
+
+    subgraph SeqMode["⬇️ Sequential Mode (fallback)"]
+        Gemini["🟡 Gemini\nEcosystem Research"]
+        Codex["🔴 Codex\nArchitect + Builder"]
+    end
+
+    Claude -->|"AGENT_TEAMS=1"| TeamMode
+    Claude -->|"AGENT_TEAMS=0"| SeqMode
+    TeamMode -->|"findings"| Claude
+    SeqMode -->|"findings"| Claude
     Claude -->|"synthesized result"| You
 
     style Claude fill:#4A90E2,stroke:#2E5C8A,stroke-width:3px,color:#fff
     style Codex fill:#E24A4A,stroke:#8A2E2E,stroke-width:2px,color:#fff
     style Gemini fill:#E2B44A,stroke:#8A6E2E,stroke-width:2px,color:#fff
+    style Researcher fill:#4A90E2,stroke:#2E5C8A,stroke-width:2px,color:#fff
+    style Architect fill:#4A90E2,stroke:#2E5C8A,stroke-width:2px,color:#fff
 ```
 
 ---
@@ -46,7 +59,7 @@ once you run claude, please run:
 /fw:setup
 ```
 
-That's it — all `/fw:` commands are ready to use immediately.
+`/fw:setup` will detect your providers, install personas, and optionally configure **agent teams** for parallel workflows. All `/fw:` commands are ready to use immediately.
 
 ---
 
@@ -71,6 +84,35 @@ Flywheel ships 10 **native Claude Code sub-agents** — persistent specialists t
 ```bash
 "${CLAUDE_PLUGIN_ROOT}/scripts/install-personas.sh" --force
 ```
+
+---
+
+## 🤝 Agent Teams (v1.1.0)
+
+Flywheel v1.1.0 adds **native Claude-to-Claude parallel execution** via the `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` feature flag. When enabled, complex commands spawn specialist teammates that work in parallel instead of sequentially.
+
+**Commands that gain parallel teammates:**
+
+| Command | Template | Parallel Phases | Teammates |
+|---------|----------|-----------------|-----------|
+| `/fw:implement` | `research-and-plan` | 1a+1b, 7+8 | researcher, architect, test-writer |
+| `/fw:design` | `research-and-plan` | 1+2 | researcher, architect |
+| `/fw:review` | `parallel-review` | All analysis (critical level) | security, quality, test reviewers |
+| `/fw:reflect` | `parallel-analysis` | Phase 2 aspects | 1 per aspect (up to 4) |
+| `/fw:harden` | `parallel-scan` | Phase 1 scans | owasp, dependency, secrets scanners |
+| `/fw:migrate` | `parallel-migration-research` | Phase 1b | framework-researcher, codebase-analyzer |
+
+**Enabling:** Run `/fw:setup` and select "yes" for agent teams, or set manually:
+```bash
+# In ~/.claude/settings.json
+{ "env": { "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1" } }
+```
+
+**Fallback:** All commands work identically without the feature flag — sequential mode is the default. No behavior changes unless you opt in.
+
+**Cost:** Each teammate is a separate Claude instance. Teams cost ~2–4x more tokens. Use `FLYWHEEL_DISABLE_TEAMS=1` to temporarily disable without removing the flag.
+
+> See [`agents/team-roles/README.md`](./agents/team-roles/README.md) for the full team orchestration pattern.
 
 ---
 
@@ -118,11 +160,13 @@ Flywheel ships 10 **native Claude Code sub-agents** — persistent specialists t
 |---|-------|-------|-------------|
 | 0 | Parse & Classify | Claude | Understands requirements, classifies `light` / `standard` / `deep` |
 | 1 | Codebase Analysis | Claude | Scans relevant files, maps patterns, identifies constraints |
-| 2 | Ecosystem Research | Gemini | Best practices, packages, pitfalls, security considerations |
-| 3 | Deep Analysis | Codex | Evaluates approaches, recommends architecture, identifies risks |
+| 2 | Ecosystem Research | Gemini / `researcher` teammate | Best practices, packages, pitfalls, security considerations |
+| 3 | Deep Analysis | Codex / `architect` teammate | Evaluates approaches, recommends architecture, identifies risks |
 | 4 | Resolve Questions | Claude | Surfaces blocking decisions for the user (max 5) |
 | 5 | Write Plan | Claude | Produces `DESIGN-PLAN.md` with full task breakdown |
 | 6 | **User Gate** | **You** | `approve` / `refine` / `deeper` / `implement` |
+
+> **Team mode** (`standard`/`deep`): Phases 1 and 2 run in parallel — lead scans codebase while `researcher` teammate researches ecosystem. Phase 3 uses `architect` teammate.
 
 **Output:** A structured plan covering requirements, solution overview, files impacted, ordered task breakdown with validation steps, risks, and a testing strategy.
 
@@ -148,20 +192,23 @@ Flywheel ships 10 **native Claude Code sub-agents** — persistent specialists t
 | # | Phase | Agent | What happens |
 |---|-------|-------|-------------|
 | 0 | Scope detection | Claude | Detects `small` / `medium` / `large` |
-| 1 | Research | Claude + `fw-researcher` | Codebase scan + ecosystem research |
-| 2 | Planning | `fw-architect` | Approach comparison, ADRs, file map, risk register |
+| 1a | Codebase Research | Claude | Scans existing code, patterns, constraints |
+| 1b | Ecosystem Research | Gemini / `researcher` teammate | Best practices, libraries, pitfalls |
+| 2 | Planning | `fw-architect` / `architect` teammate | Approach comparison, ADRs, file map, risk register |
 | 3 | Questions | Claude | Gap analysis, max 5 critical questions |
 | 4 | Proposal | Claude | Structured spec + acceptance criteria |
 | 5 | **User Gate** | **You** | ⛔ Approve / modify / cancel |
 | 6 | Iteration | Codex + Claude | Approach review loop (medium/large) |
 | 7 | Implementation | Codex | Writes the code |
-| 8 | Testing | Codex + Claude | TDD-style tests + coverage review |
+| 8 | Testing | Codex / `test-writer` teammate | TDD-style tests + coverage review |
 | 9 | Return | Claude | Summary, files changed, next steps |
 
 **Scope behaviour:**
-- `small` (fix/add/tweak) — skips Gemini research + iteration loop
+- `small` (fix/add/tweak) — skips ecosystem research + iteration loop + teams
 - `medium` (implement/build) — full workflow
 - `large` (architect/system) — full workflow + deeper research
+
+> **Team mode** (`medium`/`large`): Phases 1a+1b run in parallel; Phase 2 uses `architect` teammate; Phase 8 uses `test-writer` teammate while Phase 7 implementation runs.
 
 ---
 
@@ -248,6 +295,8 @@ Delegate a single task to a sub-agent. Best for one-shot tasks.
 
 Multi-agent PR code review with configurable depth (`low` / `medium` / `critical`) and output options (`local` / `draft` / `direct` to GitHub).
 
+> **Team mode** (`critical` level only): Spawns three parallel reviewers — `security-reviewer` (fw-security-auditor), `quality-reviewer` (fw-code-reviewer), `test-reviewer` (fw-test-generator) — all working simultaneously on the same PR diff. Lead synthesizes and deduplicates findings before posting.
+
 ---
 
 ### `/fw:reflect [scope] [aspects]`
@@ -267,7 +316,7 @@ Multi-agent PR code review with configurable depth (`low` / `medium` / `critical
 |---|-------|-------|-------------|
 | 0 | Parse & Configure | Claude | Detects scope (`file` / `module` / `project` / `staged` / `branch`) and aspects |
 | 1 | Scope Resolution | Claude | Resolves exact file list, groups by domain, finalises depth (`quick` / `standard` / `deep`) |
-| 2 | Analysis | Claude + Codex | Per-aspect analysis passes; dispatched per chunk at `standard`/`deep` depth |
+| 2 | Analysis | Claude + Codex / `aspect-*` teammates | Per-aspect analysis passes; parallel teammates at `standard`/`deep` depth |
 | 3 | Synthesis | `fw-reflector` | Deduplicates findings, sorts by severity, extracts systemic patterns + recommendations |
 | 4 | Report | `fw-reflector` | Writes narrative report to `$SESSION_DIR/04-report.md` and displays it in full |
 | 5 | **User Gate** | **You** | `accept` / `deeper` / `implement` / `delegate` |
@@ -279,9 +328,11 @@ Multi-agent PR code review with configurable depth (`low` / `medium` / `critical
 4. **Test coverage** — coverage gaps, test quality, brittleness
 
 **Depth behaviour:**
-- `quick` (<5 files) — Claude reads and analyzes directly, no sub-agents
-- `standard` (5–20 files) — Codex dispatched per aspect
-- `deep` (>20 files) — Codex dispatched per chunk per aspect
+- `quick` (<5 files) — Claude reads and analyzes directly, no sub-agents or teams
+- `standard` (5–20 files) — Codex dispatched per aspect (sequential) or one teammate per aspect (team mode)
+- `deep` (>20 files) — Codex dispatched per chunk per aspect (sequential) or parallel aspect teammates (team mode)
+
+> **Team mode** (`standard`/`deep`): One `fw-reflector` teammate spawned per selected aspect — all run simultaneously. Up to 4 parallel aspects.
 
 **Output:** Severity-bucketed report (🔴 Critical · 🟠 High · 🟡 Mid · 🟢 Low) with named strengths, systemic patterns, and actionable recommendations. Saved to `~/.flywheel/projects/<project>/reflect/<session>/`.
 
@@ -302,13 +353,15 @@ Multi-agent PR code review with configurable depth (`low` / `medium` / `critical
 | # | Phase | Agent | What happens |
 |---|-------|-------|-------------|
 | 0 | Parse & Scope | Claude | Detects `patch` / `minor` / `major` |
-| 1 | Research | Claude + Gemini | Codebase inventory + breaking changes research |
+| 1 | Research | Claude + Gemini / `framework-researcher` + `codebase-analyzer` teammates | Codebase inventory + breaking changes research |
 | 2 | Manifest | Codex | File-by-file change map, batched by risk |
 | 3 | **User Gate** | **You** | ⛔ Approve all / specific batch / modify / cancel |
 | 4 | Execute | Codex | Applies changes batch-by-batch with validation |
 | 5 | Verify & Report | Claude | Final validation, diff summary, rollback instructions |
 
 **Batch strategy:** Safe (🟢) → Moderate (🟡) → Breaking (🔴), with lint/type/build/test checks between each batch.
+
+> **Team mode** (`minor`/`major`): `framework-researcher` (fw-researcher) and `codebase-analyzer` (fw-migration-engineer) run in parallel — one researches official migration guides while the other inventories the codebase impact.
 
 ---
 
@@ -327,12 +380,14 @@ Multi-agent PR code review with configurable depth (`low` / `medium` / `critical
 | # | Phase | Agent | What happens |
 |---|-------|-------|-------------|
 | 0 | Parse & Detect | Claude | Scope + stack detection |
-| 1 | Code Scan | Codex | OWASP Top 10 + language-specific vulnerability patterns |
-| 2 | Dependency Audit | Gemini | CVE cross-reference, supply chain risk |
-| 3 | Secrets Scan | Claude | Hardcoded keys, leaked credentials, misconfigurations |
+| 1 | Scans | `fw-security-auditor` / parallel teammates | OWASP Top 10, CVE audit, secrets detection |
+| 2 | Dependency Audit | Gemini (sequential) | CVE cross-reference, supply chain risk |
+| 3 | Secrets Scan | Claude (sequential) | Hardcoded keys, leaked credentials, misconfigurations |
 | 4 | Triage & Patch | Claude + Codex | Prioritise findings, generate fixes, validate |
 
 **Severity levels:** 🔴 Critical · 🟠 High · 🟡 Medium · 🟢 Low — with OWASP category mapping on every finding.
+
+> **Team mode** (`module`/`project` scope): Three teammates run simultaneously — `owasp-scanner`, `dependency-auditor`, and `secrets-detector` — all using the `fw-security-auditor` persona. Lead merges findings in Phase 5.
 
 ---
 
@@ -398,6 +453,7 @@ Multi-agent PR code review with configurable depth (`low` / `medium` / `critical
 /fw:cleanup implement          # clear only implement sessions
 /fw:cleanup older 2w           # clear sessions older than 2 weeks
 /fw:cleanup results            # clear dispatch result files only
+/fw:cleanup teams              # list and remove stale agent team configs
 /fw:cleanup all                # clear everything across all projects
 /fw:cleanup migrate-legacy     # move pre-isolation flat sessions into current project
 ```
@@ -406,7 +462,14 @@ Multi-agent PR code review with configurable depth (`low` / `medium` / `critical
 
 ### `/fw:setup`
 
-Detect and configure AI providers. Run this once after installation to verify Codex, Claude, and Gemini are available.
+Detect and configure AI providers and optional features. Run this once after installation.
+
+Steps:
+1. Detect Codex, Claude, and Gemini CLI availability
+2. Install personas to `~/.claude/agents/`
+3. **(New)** Optionally enable agent teams (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`)
+4. Detect MCP servers (Context7, sequential-thinking)
+5. Verify overall configuration
 
 ---
 
@@ -432,6 +495,10 @@ agents:
 | `FLYWHEEL_CODEX_SANDBOX` | `workspace-write` | Default sandbox mode for Codex |
 | `FLYWHEEL_SHOW_THINKING` | `true` | Show Codex reasoning for o-series models |
 | `FLYWHEEL_PROJECT` | `<git repo name>` | Override auto-detected project name for session isolation |
+| `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` | `0` | Enable parallel Claude teammate execution (Claude Code feature flag) |
+| `FLYWHEEL_DISABLE_TEAMS` | `0` | Kill switch — disables teams even if the feature flag is on |
+| `FLYWHEEL_MAX_TEAMMATES` | `5` | Maximum teammates per team (cost control) |
+| `FLYWHEEL_TEAM_MODE` | `auto` | Team display mode: `auto`, `in-process`, `tmux` |
 
 > **Legacy**: `FLYWHEEL_TIMEOUT` still works as a fallback for `FLYWHEEL_MAX_TIMEOUT`.
 
@@ -474,39 +541,42 @@ sequenceDiagram
 ```
 flywheel-plugin/
 ├── agents/
-│   └── personas/           # Native Claude Code sub-agents (9 personas)
-│       ├── fw-architect.md         # opus  — design/implement planning
-│       ├── fw-researcher.md        # sonnet — ecosystem research
-│       ├── fw-debugger.md          # sonnet — root-cause analysis
-│       ├── fw-security-auditor.md  # opus  — OWASP security audit
-│       ├── fw-code-reviewer.md     # sonnet — PR code review
-│       ├── fw-tdd-specialist.md    # sonnet — TDD cycles
-│       ├── fw-test-generator.md    # sonnet — coverage generation
-│       ├── fw-migration-engineer.md # sonnet — migration planning
-│       ├── fw-fe-designer.md       # sonnet — frontend UI & design
-│       └── fw-reflector.md         # sonnet — quality reflection & synthesis
+│   ├── personas/           # Native Claude Code sub-agents (10 personas)
+│   │   ├── fw-architect.md         # opus  — design/implement planning
+│   │   ├── fw-researcher.md        # sonnet — ecosystem research
+│   │   ├── fw-debugger.md          # sonnet — root-cause analysis
+│   │   ├── fw-security-auditor.md  # opus  — OWASP security audit
+│   │   ├── fw-code-reviewer.md     # sonnet — PR code review
+│   │   ├── fw-tdd-specialist.md    # sonnet — TDD cycles
+│   │   ├── fw-test-generator.md    # sonnet — coverage generation
+│   │   ├── fw-migration-engineer.md # sonnet — migration planning
+│   │   ├── fw-fe-designer.md       # sonnet — frontend UI & design
+│   │   └── fw-reflector.md         # sonnet — quality reflection & synthesis
+│   └── team-roles/         # Team orchestration pattern docs + persona→role mapping
 ├── commands/
-│   ├── design.md       # Research-driven design workflow (6 phases)
+│   ├── design.md       # Research-driven design workflow (6 phases, team-enabled)
 │   ├── fe-design.md    # Frontend build workflow — code output (4 phases)
-│   ├── implement.md    # Full feature workflow (9 phases)
+│   ├── implement.md    # Full feature workflow (9 phases, team-enabled)
 │   ├── debug.md        # Diagnostic workflow (6 phases)
 │   ├── document.md     # Documentation workflow (5 phases)
 │   ├── delegate.md     # Single-task delegation
-│   ├── review.md       # PR code review
-│   ├── migrate.md      # Migration workflow (6 phases)
-│   ├── harden.md       # Security audit (5 phases)
+│   ├── review.md       # PR code review (team-enabled at critical level)
+│   ├── migrate.md      # Migration workflow (6 phases, team-enabled)
+│   ├── harden.md       # Security audit (5 phases, team-enabled)
 │   ├── test.md         # Test generation (5 phases)
 │   ├── tdd.md          # Test-driven development (6 phases)
-│   ├── cleanup.md      # Session cache management
-│   ├── reflect.md      # Multi-dimensional quality reflection (5 phases)
-│   └── setup.md        # Provider setup + persona installation
+│   ├── cleanup.md      # Session cache management (incl. teams cleanup)
+│   ├── reflect.md      # Multi-dimensional quality reflection (5 phases, team-enabled)
+│   └── setup.md        # Provider setup + persona install + agent teams config
+├── config/
+│   ├── agents.yaml             # Agent definitions
+│   └── team-templates.yaml     # Reusable team composition templates
 ├── scripts/
-│   ├── dispatch.sh             # Multi-provider executor
+│   ├── dispatch.sh             # Multi-provider executor (codex/gemini)
 │   ├── install-personas.sh     # Copies personas to ~/.claude/agents/
 │   ├── detect-providers.sh     # Provider availability check
+│   ├── team-detect.sh          # Agent teams feature flag detection
 │   └── check_codex.sh          # Codex-specific validation
-├── config/
-│   └── agents.yaml         # Agent definitions
 └── docs/
     ├── ARCHITECTURE.md     # System architecture guide
     ├── DELEGATION_FLOW.md  # How dispatch and delegation work
@@ -523,9 +593,11 @@ flywheel-plugin/
     └── <project-name>/             # Auto-detected from git repo name
         ├── results/                # dispatch.sh outputs
         ├── design/                 # /fw:design sessions
+        ├── fe-design/              # /fw:fe-design sessions
         ├── implement/              # /fw:implement sessions
         ├── debug/                  # /fw:debug sessions
         ├── document/               # /fw:document sessions
+        ├── review/                 # /fw:review sessions
         ├── migrate/                # /fw:migrate sessions
         ├── harden/                 # /fw:harden sessions
         ├── test/                   # /fw:test sessions

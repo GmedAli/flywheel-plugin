@@ -8,6 +8,25 @@ description: Review PRs with configurable depth and output options
 
 This command reviews Pull Requests and posts findings as inline draft comments on the specific lines of code — not as one bundled comment.
 
+---
+
+## Team Configuration
+
+> **Mode**: `team` when agent teams enabled AND review level is `critical`; `sequential` for `low`/`medium`
+> **Template**: `parallel-review` (from config/team-templates.yaml)
+> **Minimum level**: `critical` only — teams add no value for low/medium reviews
+> **Detection**: `scripts/team-detect.sh`
+
+| Role | Persona | Task | Parallel With |
+|------|---------|------|---------------|
+| security-reviewer | fw-security-auditor | Security vulnerability scan | quality-reviewer, test-reviewer |
+| quality-reviewer | fw-code-reviewer | Code quality and patterns | security-reviewer, test-reviewer |
+| test-reviewer | fw-test-generator | Test coverage gaps | security-reviewer, quality-reviewer |
+
+All three reviewers work simultaneously on the same PR diff. Lead synthesizes findings before posting.
+
+---
+
 ## Step 1: Ask User for Configuration
 
 Before we begin the review, I need to ask you a few questions to configure the review process:
@@ -148,6 +167,53 @@ Use `grep` to find files that import the changed files, or files imported by the
 
 ### For CRITICAL Level Review:
 **Context Needed**: PR diff + comprehensive codebase analysis
+
+**[TEAM MODE — parallel reviewers | all three run simultaneously]**
+
+Detect agent teams first:
+```bash
+"${CLAUDE_PLUGIN_ROOT}/scripts/team-detect.sh" 2>&1
+```
+
+If agent teams available:
+```
+Create an agent team for this PR review.
+
+Spawn three reviewer teammates simultaneously:
+
+Teammate 1 — 'security-reviewer':
+PERSONA IDENTITY: <contents of agents/personas/fw-security-auditor.md>
+TASK: Review PR #<PR_NUMBER> for security vulnerabilities.
+Focus on: injection attacks, auth flaws, input validation, secrets exposure, OWASP Top 10.
+Use the diff and file context provided. For each finding: file, line, severity, issue, impact, fix.
+Save findings to: /tmp/review-security-<PR_NUMBER>.md
+
+Teammate 2 — 'quality-reviewer':
+PERSONA IDENTITY: <contents of agents/personas/fw-code-reviewer.md>
+TASK: Review PR #<PR_NUMBER> for code quality.
+Focus on: design patterns, architecture compliance, SOLID, DRY, error handling, performance, documentation.
+Save findings to: /tmp/review-quality-<PR_NUMBER>.md
+
+Teammate 3 — 'test-reviewer':
+PERSONA IDENTITY: <contents of agents/personas/fw-test-generator.md>
+TASK: Review PR #<PR_NUMBER> for test coverage.
+Focus on: missing tests for new code, untested edge cases, test quality, coverage of acceptance criteria.
+Save findings to: /tmp/review-tests-<PR_NUMBER>.md
+
+PR DIFF FOR ALL TEAMMATES:
+<contents of the PR diff from Step 4>
+
+PR CONTEXT:
+<PR title, description, changed files list>
+```
+
+Wait for all three teammates to complete. Lead reads all three finding files and synthesizes into a unified finding set (deduplicating overlapping findings). Then proceed to Step 6.
+
+Cleanup after Step 7: `"Clean up the team. Shut down all teammates first."`
+
+---
+
+**[SEQUENTIAL MODE — fallback when agent teams disabled or review level < critical]**
 
 **Analysis Focus**:
 - Design pattern adherence (factory, singleton, observer, etc.)
