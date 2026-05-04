@@ -10,6 +10,8 @@ description: Full feature implementation workflow — research, plan, propose, b
 
 This command runs a structured 9-phase workflow to implement a feature end-to-end. Claude orchestrates specialized agents at each phase. **No code is written until you approve the proposal.**
 
+> **Design-aware:** If a prior `/fw:design` run produced a `DESIGN-PLAN.md`, this command detects it and fast-tracks through research and planning — jumping straight to a quick technical prep and then implementation.
+
 ---
 
 ## Team Configuration
@@ -75,9 +77,117 @@ Save `$SESSION_DIR/00-session.md` with:
 - Git branch (run `git branch --show-current`)
 - Working directory
 
+### Design Plan Detection
+
+Check if a prior `/fw:design` run exists:
+
+1. Look for `DESIGN-PLAN.md` in the project root
+2. If not found, check for the most recent session in `~/.flywheel/projects/$PROJECT_NAME/design/` that contains a `05-plan.md`
+
+If a design plan is found:
+
+```
+📋 Existing design plan detected: <path to DESIGN-PLAN.md or 05-plan.md>
+⚡ Fast-tracking — skipping research & planning phases
+```
+
+Set `DESIGN_FAST_TRACK=true` and load the plan contents into `$DESIGN_PLAN`.
+
+Ask the user:
+```
+Found an existing design plan. How would you like to proceed?
+
+  [use]     — use this plan and go straight to implementation
+  [review]  — show the plan summary first, then decide
+  [ignore]  — discard it and run the full workflow from scratch
+```
+
+- **use** → jump to **Phase 4b: Technical Prep** (below)
+- **review** → display the plan's Section 1 (Requirements) and Section 4 (Implementation Plan / Task Breakdown), then ask `[use]` or `[ignore]`
+- **ignore** → set `DESIGN_FAST_TRACK=false`, continue to Phase 1 as normal
+
+If no design plan is found, set `DESIGN_FAST_TRACK=false` and continue to Phase 1.
+
+---
+
+## Phase 4b: Technical Prep (design fast-track only) 🔧
+
+> **Only runs when `DESIGN_FAST_TRACK=true`** — replaces Phases 1-4.
+
+**Goal:** Bridge the gap between the design plan and implementation. The design plan has the *what* and *why* — this phase fills in any remaining *how*.
+
+### 4b-i — Quick Codebase Reconciliation
+
+You (Claude) do a focused scan:
+- Verify the files listed in the design plan's Impact Overview still exist and haven't changed significantly since the plan was written
+- Check for any new files or changes that might affect the plan (e.g., someone else merged related work)
+- Confirm the task breakdown in Section 4 is still accurate
+
+If discrepancies are found:
+```
+⚠️  Codebase changes detected since design plan was written:
+   - <file>: <what changed>
+   - <file>: <new file not in plan>
+
+Adjusting implementation approach accordingly.
+```
+
+### 4b-ii — Technical Gap Fill (medium + large only)
+
+For anything the design plan left abstract (e.g., "add validation logic", "integrate with API"), resolve to concrete implementation details:
+- Exact function signatures and types
+- Specific imports and dependencies
+- Error handling patterns matching the codebase
+
+### 4b-iii — Generate Proposal from Design Plan
+
+Transform the design plan into the standard proposal format and save to `$SESSION_DIR/04-proposal.md`:
+
+```markdown
+# Implementation Proposal: <FEATURE_NAME>
+
+## Summary
+<From design plan Section 1 — Requirements / What We're Building>
+
+## Approach
+<From design plan Section 2 — Solution Overview>
+
+## Scope
+- **In scope:** <from design plan Requirements>
+- **Out of scope:** <from design plan Out of Scope>
+
+## Files to Change
+<From design plan Section 3 — Impact Overview, converted to table format>
+
+## Acceptance Criteria
+<From design plan Success Criteria>
+
+## Task Breakdown
+<From design plan Section 4 — preserved as-is, this is the implementation roadmap>
+
+## Risks & Mitigations
+<From design plan Section 5>
+
+## Technical Notes
+<Any findings from 4b-i and 4b-ii — codebase reconciliation and gap fill>
+```
+
+Save codebase reconciliation to `$SESSION_DIR/01-research-codebase.md` (for Phase 7 context).
+
+Print:
+```
+✅ Technical Prep Complete — Design plan adapted for implementation
+   Files verified: <N>/<total in plan>
+   Discrepancies: <count or "none">
+```
+
+→ **Jump directly to Phase 5 (User Approval Gate)**
+
 ---
 
 ## Phase 1: Research 🔍
+
+> **Skipped when `DESIGN_FAST_TRACK=true`** — design plan already covers this.
 
 > *Inspired by the `probe` phase in claude-octopus embrace workflow*
 
@@ -196,6 +306,7 @@ Print a brief summary:
 
 ## Phase 2: Planning 🏗️
 
+> **Skipped when `DESIGN_FAST_TRACK=true`** — design plan already covers this.
 > *Inspired by the `grasp` phase — uses fw-architect persona*
 
 **Goal:** Produce a technical plan with architecture decisions.
@@ -326,6 +437,8 @@ Print:
 
 ## Phase 3: Questions ❓
 
+> **Skipped when `DESIGN_FAST_TRACK=true`** — design plan already resolved open questions.
+
 **Goal:** Identify gaps before committing to an approach. Ask only what's truly blocking.
 
 You (Claude) analyse the research + plan and identify ambiguities. Then ask the user **at most 5 questions**, ranked by impact. Format them clearly:
@@ -348,6 +461,8 @@ Save questions + answers to `$SESSION_DIR/03-questions.md`.
 ---
 
 ## Phase 4: Proposal 📋
+
+> **Skipped when `DESIGN_FAST_TRACK=true`** — proposal is generated from design plan in Phase 4b-iii instead.
 
 **Goal:** Produce a structured spec the user can approve or modify.
 

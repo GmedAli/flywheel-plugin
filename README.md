@@ -271,6 +271,73 @@ Flywheel v1.1.0 adds **native Claude-to-Claude parallel execution** via the `CLA
 
 ---
 
+### `/fw:summarize [source] [length] [visualize]`
+
+**Plain-English summary of a proposed solution or actual changes.** Translates dense reports, design docs, diffs, or commits into clear, jargon-free explanations a non-expert can follow. Optionally enriched with mermaid diagrams via the `visualize` skill. **Never modifies code.**
+
+```
+/fw:summarize                          # auto-detect: latest session report or staged diff
+/fw:summarize staged                   # what's about to be committed
+/fw:summarize branch                   # the whole current branch in plain language
+/fw:summarize last design              # latest /fw:design proposal in simpler terms
+/fw:summarize commit HEAD~2            # explain a specific commit
+/fw:summarize claudedocs/auth.md       # summarize any markdown report
+/fw:summarize staged tiny              # force a 2-3 sentence summary
+/fw:summarize last design visualize    # summary + mermaid diagram(s)
+/fw:summarize branch no diagrams       # explicitly skip visualization
+```
+
+**Sources:** `staged` · `branch` · `last [command]` · `commit <ref>` · `commits <N>` · file path · free text · auto
+
+**Length tiers** (auto-detected from input size, overridable):
+- `tiny` — 2-3 sentences
+- `short` — 1 paragraph
+- `medium` — bullets + paragraph
+- `long` — sectioned summary (Plain Terms / What Changed / Why / Watch For)
+
+**Visualization** (auto / forced / skipped): the `visualize` skill self-evaluates structural signals in the source and adds up to 2 diagrams under an `## At a glance` section when they would help. Use `visualize` to force, `no diagrams` to skip.
+
+**User gate:** `accept` / `shorter` / `longer` / `refine` / `audience` / `visualize` (add or replace diagrams).
+
+---
+
+### `/fw:visualize [source] [diagram-type]`
+
+**Generate mermaid diagrams to visualize code, changes, sessions, architectures, or concepts.** Picks the diagram type from content signals (or accepts an override) and produces up to 5 complementary diagrams per output. **Never modifies code.**
+
+```
+/fw:visualize                        # auto-detect: latest session or staged diff
+/fw:visualize staged                 # diagram of what's about to be committed
+/fw:visualize architecture           # project-wide architecture overview
+/fw:visualize last design            # visualize a /fw:design proposal
+/fw:visualize scripts/dispatch.sh    # call graph of a single file
+/fw:visualize commands/ graph        # module dependency graph of a directory
+/fw:visualize staged sequence        # force sequence diagram
+/fw:visualize how auth flows         # mindmap a free-text concept
+```
+
+**Sources:** `staged` · `branch` · `last [command]` · `commit <ref>` · `commits <N>` · file or directory path · `architecture` · free-text concept · auto
+
+**Diagram types** (auto-selected from signals, overridable):
+- `flowchart` — processes, decisions, control flow
+- `sequence` — actors exchanging messages over time
+- `class` — module / class structure
+- `state` — lifecycles, status transitions
+- `er` — data models, entity relationships
+- `graph` — component dependencies
+- `mindmap` — concept hierarchies, decompositions
+- `timeline` / `gantt` — chronological events, project plans
+- `git` — branch / commit / merge history
+- `c4` — system architecture across boundaries
+
+**Phases:** Parse → Gather Content → Select Diagram Type(s) → Generate → Render → User Gate (`accept` / `add` / `swap` / `zoom` / `refine` / `export`).
+
+**Output:** Up to 5 mermaid diagrams with framing prose, saved to the session directory and optionally exportable to `docs/<slug>.md` or `claudedocs/<slug>.md`.
+
+**Skill:** `skills/visualize/SKILL.md` — also consumed on-demand by `/fw:summarize`, `/fw:document`, `/fw:design`, `/fw:debug`, `/fw:implement`, and `/fw:reflect`.
+
+---
+
 ### `/fw:delegate [using <provider>] <task>`
 
 Delegate a single task to a sub-agent. Best for one-shot tasks.
